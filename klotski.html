@@ -324,6 +324,225 @@
             transform: none;
         }
 
+        .autoplay-settings {
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .autoplay-settings .settings-title {
+            color: #aaa;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .autoplay-type-selector {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .autoplay-type-selector label {
+            font-size: 11px;
+            color: #aaa;
+        }
+
+        .autoplay-type-selector select {
+            padding: 8px 10px;
+            border: none;
+            border-radius: 6px;
+            background: rgba(0,0,0,0.3);
+            color: #fff;
+            font-size: 14px;
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .autoplay-type-selector select:focus {
+            outline: 2px solid #f97316;
+        }
+
+        .bfs-settings {
+            margin-top: 15px;
+            padding: 15px 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .bfs-settings .settings-title {
+            color: #aaa;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .bfs-settings .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .bfs-settings .setting-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .bfs-settings label {
+            font-size: 11px;
+            color: #aaa;
+        }
+
+        .bfs-settings input {
+            padding: 8px 10px;
+            border: none;
+            border-radius: 6px;
+            background: rgba(0,0,0,0.3);
+            color: #fff;
+            font-size: 14px;
+            width: 100%;
+        }
+
+        .bfs-settings input:focus {
+            outline: 2px solid #22c55e;
+        }
+
+        .bfs-settings .setting-item.full-width {
+            grid-column: span 2;
+        }
+
+        .dfs-settings {
+            margin-top: 15px;
+            padding: 15px 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .dfs-settings .settings-title {
+            color: #aaa;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .dfs-settings .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .dfs-settings .setting-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .dfs-settings label {
+            font-size: 11px;
+            color: #aaa;
+        }
+
+        .dfs-settings input {
+            padding: 8px 10px;
+            border: none;
+            border-radius: 6px;
+            background: rgba(0,0,0,0.3);
+            color: #fff;
+            font-size: 14px;
+            width: 100%;
+        }
+
+        .dfs-settings input:focus {
+            outline: 2px solid #a855f7;
+        }
+
+        .dfs-settings .setting-item.full-width {
+            grid-column: span 2;
+        }
+
+        .dfs-status {
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            text-align: center;
+            display: none;
+        }
+
+        .dfs-status.show {
+            display: block;
+        }
+
+        .dfs-status .label {
+            color: #aaa;
+            font-size: 12px;
+        }
+
+        .dfs-status .values {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 5px;
+        }
+
+        .dfs-status .value-item {
+            text-align: center;
+        }
+
+        .dfs-status .value {
+            font-weight: bold;
+            color: #a855f7;
+        }
+
+        .bfs-status {
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            text-align: center;
+            display: none;
+        }
+
+        .bfs-status.show {
+            display: block;
+        }
+
+        .bfs-status .label {
+            color: #aaa;
+            font-size: 12px;
+        }
+
+        .bfs-status .values {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 5px;
+        }
+
+        .bfs-status .value-item {
+            text-align: center;
+        }
+
+        .bfs-status .value {
+            font-weight: bold;
+            color: #22c55e;
+        }
+
         .preview-canvas {
             position: fixed;
             pointer-events: none;
@@ -408,7 +627,19 @@
             <button class="auto-btn" id="autoBtn" onclick="toggleAutoplay()">Autoplay</button>
         </div>
 
-        <div class="sa-settings">
+        <div class="autoplay-settings">
+            <div class="settings-title">Autoplay Settings</div>
+            <div class="autoplay-type-selector">
+                <label for="autoplayType">Algorithm</label>
+                <select id="autoplayType" onchange="onAutoplayTypeChange()">
+                    <option value="sa">Simulated Annealing</option>
+                    <option value="bfs">BFS (Breadth-First)</option>
+                    <option value="dfs">DFS (Depth-First)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="sa-settings" id="saSettings">
             <div class="settings-title">Simulated Annealing Settings</div>
             <div class="settings-grid">
                 <div class="setting-item">
@@ -454,6 +685,62 @@
                 <div class="value-item">
                     <div class="value" id="saIter">-</div>
                     <div class="label">Iterations</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bfs-settings" id="bfsSettings" style="display: none;">
+            <div class="settings-title">BFS Settings</div>
+            <div class="settings-grid">
+                <div class="setting-item full-width">
+                    <label for="bfsStepDelay">Step Delay (ms)</label>
+                    <input type="number" id="bfsStepDelay" value="1" min="0" max="1000" step="1">
+                </div>
+            </div>
+        </div>
+
+        <div class="bfs-status" id="bfsStatus">
+            <div class="label">BFS RUNNING</div>
+            <div class="values">
+                <div class="value-item">
+                    <div class="value" id="bfsQueueSize">-</div>
+                    <div class="label">Queue</div>
+                </div>
+                <div class="value-item">
+                    <div class="value" id="bfsVisited">-</div>
+                    <div class="label">Visited</div>
+                </div>
+                <div class="value-item">
+                    <div class="value" id="bfsBestEnergy">-</div>
+                    <div class="label">Best Energy</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="dfs-settings" id="dfsSettings" style="display: none;">
+            <div class="settings-title">DFS Settings</div>
+            <div class="settings-grid">
+                <div class="setting-item full-width">
+                    <label for="dfsStepDelay">Step Delay (ms)</label>
+                    <input type="number" id="dfsStepDelay" value="1" min="0" max="1000" step="1">
+                </div>
+            </div>
+        </div>
+
+        <div class="dfs-status" id="dfsStatus">
+            <div class="label">DFS RUNNING</div>
+            <div class="values">
+                <div class="value-item">
+                    <div class="value" id="dfsStackSize">-</div>
+                    <div class="label">Stack</div>
+                </div>
+                <div class="value-item">
+                    <div class="value" id="dfsVisited">-</div>
+                    <div class="label">Visited</div>
+                </div>
+                <div class="value-item">
+                    <div class="value" id="dfsBestEnergy">-</div>
+                    <div class="label">Best Energy</div>
                 </div>
             </div>
         </div>
@@ -514,6 +801,25 @@
         let saAnimationId = null;
         let bestState = null;
         let bestEnergy = Infinity;
+
+        // BFS state
+        let bfsRunning = false;
+        let bfsAnimationId = null;
+        let bfsQueue = []; // Queue of state hashes to visit
+        let bfsVisitedCount = 0;
+        let bfsBestEnergy = Infinity;
+        let bfsBestState = null;
+
+        // DFS state
+        let dfsRunning = false;
+        let dfsAnimationId = null;
+        let dfsStack = []; // Stack of state hashes to visit
+        let dfsVisitedCount = 0;
+        let dfsBestEnergy = Infinity;
+        let dfsBestState = null;
+
+        // Current autoplay type
+        let autoplayType = 'sa'; // 'sa' or 'bfs'
 
         // Force-directed 3D graph state
         const graphCanvas = document.getElementById('graphCanvas');
@@ -1600,10 +1906,33 @@
             document.getElementById('winOverlay').classList.remove('show');
         }
 
-        // ==================== SIMULATED ANNEALING ====================
+        // ==================== AUTOPLAY ====================
+
+        function onAutoplayTypeChange() {
+            autoplayType = document.getElementById('autoplayType').value;
+            const saSettings = document.getElementById('saSettings');
+            const bfsSettings = document.getElementById('bfsSettings');
+            const dfsSettings = document.getElementById('dfsSettings');
+
+            saSettings.style.display = 'none';
+            bfsSettings.style.display = 'none';
+            dfsSettings.style.display = 'none';
+
+            if (autoplayType === 'sa') {
+                saSettings.style.display = 'block';
+            } else if (autoplayType === 'bfs') {
+                bfsSettings.style.display = 'block';
+            } else if (autoplayType === 'dfs') {
+                dfsSettings.style.display = 'block';
+            }
+        }
+
+        function isAutoplayRunning() {
+            return saRunning || bfsRunning || dfsRunning;
+        }
 
         function toggleAutoplay() {
-            if (saRunning) {
+            if (isAutoplayRunning()) {
                 stopAutoplay();
             } else {
                 startAutoplay();
@@ -1611,29 +1940,114 @@
         }
 
         function startAutoplay() {
-            saRunning = true;
-            bestState = JSON.parse(JSON.stringify(blocks));
-            bestEnergy = calculateEnergy(blocks);
-
             document.getElementById('autoBtn').textContent = 'Stop';
             document.getElementById('autoBtn').classList.add('running');
-            document.getElementById('saStatus').classList.add('show');
 
             // Initialize graph with current state (visited = true)
             currentStateHash = addGraphNode(blocks, true);
 
+            if (autoplayType === 'sa') {
+                startSimulatedAnnealing();
+            } else if (autoplayType === 'bfs') {
+                startBFS();
+            } else if (autoplayType === 'dfs') {
+                startDFS();
+            }
+        }
+
+        function startSimulatedAnnealing() {
+            saRunning = true;
+            bestState = JSON.parse(JSON.stringify(blocks));
+            bestEnergy = calculateEnergy(blocks);
+            document.getElementById('saStatus').classList.add('show');
             runSimulatedAnnealing();
         }
 
+        function startBFS() {
+            bfsRunning = true;
+
+            // Seed queue with all unvisited nodes that have visited neighbors
+            // This allows BFS to resume from where it left off
+            bfsQueue = [];
+            bfsVisitedCount = 0;
+            bfsBestEnergy = Infinity;
+            bfsBestState = null;
+
+            // Count visited nodes and find unvisited frontier
+            const unvisitedWithVisitedNeighbor = new Set();
+
+            for (const [hash, node] of graphNodes) {
+                if (node.visited) {
+                    bfsVisitedCount++;
+                    // Check energy for best state tracking
+                    if (node.state) {
+                        const energy = calculateEnergy(node.state);
+                        if (energy < bfsBestEnergy) {
+                            bfsBestEnergy = energy;
+                            bfsBestState = JSON.parse(JSON.stringify(node.state));
+                        }
+                    }
+                }
+            }
+
+            // Find unvisited nodes that are adjacent to visited nodes
+            for (const edge of graphEdges) {
+                const fromNode = graphNodes.get(edge.from);
+                const toNode = graphNodes.get(edge.to);
+
+                if (fromNode && toNode) {
+                    if (fromNode.visited && !toNode.visited) {
+                        unvisitedWithVisitedNeighbor.add(edge.to);
+                    }
+                    if (toNode.visited && !fromNode.visited) {
+                        unvisitedWithVisitedNeighbor.add(edge.from);
+                    }
+                }
+            }
+
+            bfsQueue = Array.from(unvisitedWithVisitedNeighbor);
+
+            // If no frontier found, start fresh from current state
+            if (bfsQueue.length === 0) {
+                bfsQueue = [currentStateHash];
+                if (bfsVisitedCount === 0) {
+                    bfsVisitedCount = 1;
+                }
+                bfsBestEnergy = calculateEnergy(blocks);
+                bfsBestState = JSON.parse(JSON.stringify(blocks));
+            }
+
+            document.getElementById('bfsStatus').classList.add('show');
+            runBFS();
+        }
+
         function stopAutoplay() {
+            // Stop SA
             saRunning = false;
             if (saAnimationId) {
                 cancelAnimationFrame(saAnimationId);
                 saAnimationId = null;
             }
+            document.getElementById('saStatus').classList.remove('show');
+
+            // Stop BFS
+            bfsRunning = false;
+            if (bfsAnimationId) {
+                clearTimeout(bfsAnimationId);
+                bfsAnimationId = null;
+            }
+            document.getElementById('bfsStatus').classList.remove('show');
+
+            // Stop DFS
+            dfsRunning = false;
+            if (dfsAnimationId) {
+                clearTimeout(dfsAnimationId);
+                dfsAnimationId = null;
+            }
+            document.getElementById('dfsStatus').classList.remove('show');
+
             document.getElementById('autoBtn').textContent = 'Autoplay';
             document.getElementById('autoBtn').classList.remove('running');
-            document.getElementById('saStatus').classList.remove('show');
         }
 
         // Energy function: Manhattan distance from main block to goal
@@ -1824,6 +2238,456 @@
             }
 
             step();
+        }
+
+        // ==================== BFS (Breadth-First Search) ====================
+
+        let bfsOnAnimationComplete = null; // Callback when path animation completes
+
+        function runBFS() {
+            const stepDelay = parseInt(document.getElementById('bfsStepDelay').value) || 50;
+
+            function processNextNode() {
+                if (!bfsRunning) return;
+
+                // Wait if path animation is in progress
+                if (pathAnimating) {
+                    bfsAnimationId = setTimeout(processNextNode, 50);
+                    return;
+                }
+
+                if (bfsQueue.length === 0) {
+                    // BFS complete - no more unvisited nodes to explore
+                    stopAutoplay();
+                    return;
+                }
+
+                // Get next node from queue
+                const targetHash = bfsQueue.shift();
+                const targetNode = graphNodes.get(targetHash);
+
+                if (!targetNode || !targetNode.state) {
+                    // Skip invalid nodes, continue to next
+                    bfsAnimationId = setTimeout(processNextNode, 0);
+                    return;
+                }
+
+                // Find path from current position to target
+                const path = findShortestPath(currentStateHash, targetHash);
+
+                if (!path || path.length < 2) {
+                    // No path found or already at target, skip to next
+                    // Still process this node's neighbors
+                    exploreNode(targetHash, targetNode);
+                    updateBFSStatus();
+                    bfsAnimationId = setTimeout(processNextNode, stepDelay);
+                    return;
+                }
+
+                // Set up callback for when animation completes
+                bfsOnAnimationComplete = () => {
+                    if (!bfsRunning) return;
+
+                    // Now explore this node's neighbors
+                    exploreNode(targetHash, targetNode);
+                    updateBFSStatus();
+
+                    // Check if we found the solution during exploration
+                    if (bfsBestEnergy === 0) {
+                        return; // stopAutoplay already called
+                    }
+
+                    // Continue to next node
+                    bfsAnimationId = setTimeout(processNextNode, stepDelay);
+                };
+
+                // Start animating path to target
+                currentPath = path;
+                pathQueue = path.slice(1);
+                pathAnimating = true;
+                animateBFSPathStep();
+            }
+
+            processNextNode();
+        }
+
+        function animateBFSPathStep() {
+            if (!bfsRunning) {
+                pathAnimating = false;
+                currentPath = [];
+                bfsOnAnimationComplete = null;
+                return;
+            }
+
+            if (pathQueue.length === 0) {
+                pathAnimating = false;
+                currentPath = [];
+                // Call the completion callback
+                if (bfsOnAnimationComplete) {
+                    const callback = bfsOnAnimationComplete;
+                    bfsOnAnimationComplete = null;
+                    callback();
+                }
+                return;
+            }
+
+            const nextHash = pathQueue.shift();
+            const nextNode = graphNodes.get(nextHash);
+
+            if (nextNode && nextNode.state) {
+                // Update game state
+                blocks = JSON.parse(JSON.stringify(nextNode.state));
+                moves++;
+                updateMoves();
+                render();
+
+                // Mark as visited and update graph
+                const prevHash = currentStateHash;
+                addGraphNode(blocks, true, prevHash);
+                currentStateHash = nextHash;
+
+                // Update visited count if this was unvisited
+                if (!nextNode.visited) {
+                    nextNode.visited = true;
+                    bfsVisitedCount++;
+                }
+
+                // Check for win
+                if (calculateEnergy(blocks) === 0) {
+                    bfsBestEnergy = 0;
+                    bfsBestState = JSON.parse(JSON.stringify(blocks));
+                    checkWin();
+                    stopAutoplay();
+                    return;
+                }
+
+                // Continue to next step after delay
+                const stepDelay = parseInt(document.getElementById('bfsStepDelay').value) || 50;
+                setTimeout(animateBFSPathStep, stepDelay);
+            } else {
+                pathAnimating = false;
+                currentPath = [];
+                if (bfsOnAnimationComplete) {
+                    const callback = bfsOnAnimationComplete;
+                    bfsOnAnimationComplete = null;
+                    callback();
+                }
+            }
+        }
+
+        function exploreNode(nodeHash, node) {
+            // Mark this node as visited
+            if (!node.visited) {
+                node.visited = true;
+                bfsVisitedCount++;
+            }
+
+            // Get all valid moves from this state
+            const validMoves = getAllValidMoves(node.state);
+
+            for (const move of validMoves) {
+                const newState = applyMove(node.state, move);
+                const newHash = hashState(newState);
+
+                // Check if this is a new state
+                if (!graphNodes.has(newHash)) {
+                    // Add node (unvisited)
+                    addGraphNode(newState, false, nodeHash);
+                    addGraphEdge(nodeHash, newHash);
+
+                    // Add to queue for future exploration
+                    bfsQueue.push(newHash);
+
+                    // Check if this is a better solution
+                    const energy = calculateEnergy(newState);
+                    if (energy < bfsBestEnergy) {
+                        bfsBestEnergy = energy;
+                        bfsBestState = JSON.parse(JSON.stringify(newState));
+                    }
+
+                    // Found solution!
+                    if (energy === 0) {
+                        // Navigate to solution
+                        blocks = JSON.parse(JSON.stringify(newState));
+                        currentStateHash = newHash;
+                        render();
+                        moves++;
+                        updateMoves();
+                        checkWin();
+                        stopAutoplay();
+                        return;
+                    }
+                } else {
+                    // Just add edge if it doesn't exist
+                    addGraphEdge(nodeHash, newHash);
+
+                    // Add to queue if not yet visited
+                    const existingNode = graphNodes.get(newHash);
+                    if (!existingNode.visited && !bfsQueue.includes(newHash)) {
+                        bfsQueue.push(newHash);
+                    }
+                }
+            }
+        }
+
+        function updateBFSStatus() {
+            document.getElementById('bfsQueueSize').textContent = bfsQueue.length;
+            document.getElementById('bfsVisited').textContent = bfsVisitedCount;
+            document.getElementById('bfsBestEnergy').textContent = bfsBestEnergy;
+        }
+
+        // ==================== DFS (Depth-First Search) ====================
+
+        let dfsOnAnimationComplete = null; // Callback when path animation completes
+
+        function startDFS() {
+            dfsRunning = true;
+
+            // Seed stack with all unvisited nodes that have visited neighbors
+            // This allows DFS to resume from where it left off
+            dfsStack = [];
+            dfsVisitedCount = 0;
+            dfsBestEnergy = Infinity;
+            dfsBestState = null;
+
+            // Count visited nodes and find unvisited frontier
+            const unvisitedWithVisitedNeighbor = new Set();
+
+            for (const [hash, node] of graphNodes) {
+                if (node.visited) {
+                    dfsVisitedCount++;
+                    // Check energy for best state tracking
+                    if (node.state) {
+                        const energy = calculateEnergy(node.state);
+                        if (energy < dfsBestEnergy) {
+                            dfsBestEnergy = energy;
+                            dfsBestState = JSON.parse(JSON.stringify(node.state));
+                        }
+                    }
+                }
+            }
+
+            // Find unvisited nodes that are adjacent to visited nodes
+            for (const edge of graphEdges) {
+                const fromNode = graphNodes.get(edge.from);
+                const toNode = graphNodes.get(edge.to);
+
+                if (fromNode && toNode) {
+                    if (fromNode.visited && !toNode.visited) {
+                        unvisitedWithVisitedNeighbor.add(edge.to);
+                    }
+                    if (toNode.visited && !fromNode.visited) {
+                        unvisitedWithVisitedNeighbor.add(edge.from);
+                    }
+                }
+            }
+
+            dfsStack = Array.from(unvisitedWithVisitedNeighbor);
+
+            // If no frontier found, start fresh from current state
+            if (dfsStack.length === 0) {
+                dfsStack = [currentStateHash];
+                if (dfsVisitedCount === 0) {
+                    dfsVisitedCount = 1;
+                }
+                dfsBestEnergy = calculateEnergy(blocks);
+                dfsBestState = JSON.parse(JSON.stringify(blocks));
+            }
+
+            document.getElementById('dfsStatus').classList.add('show');
+            runDFS();
+        }
+
+        function runDFS() {
+            const stepDelay = parseInt(document.getElementById('dfsStepDelay').value) || 1;
+
+            function processNextNode() {
+                if (!dfsRunning) return;
+
+                // Wait if path animation is in progress
+                if (pathAnimating) {
+                    dfsAnimationId = setTimeout(processNextNode, 50);
+                    return;
+                }
+
+                if (dfsStack.length === 0) {
+                    // DFS complete - no more unvisited nodes to explore
+                    stopAutoplay();
+                    return;
+                }
+
+                // Get next node from stack (LIFO - pop instead of shift)
+                const targetHash = dfsStack.pop();
+                const targetNode = graphNodes.get(targetHash);
+
+                if (!targetNode || !targetNode.state) {
+                    // Skip invalid nodes, continue to next
+                    dfsAnimationId = setTimeout(processNextNode, 0);
+                    return;
+                }
+
+                // Find path from current position to target
+                const path = findShortestPath(currentStateHash, targetHash);
+
+                if (!path || path.length < 2) {
+                    // No path found or already at target, skip to next
+                    // Still process this node's neighbors
+                    exploreDFSNode(targetHash, targetNode);
+                    updateDFSStatus();
+                    dfsAnimationId = setTimeout(processNextNode, stepDelay);
+                    return;
+                }
+
+                // Set up callback for when animation completes
+                dfsOnAnimationComplete = () => {
+                    if (!dfsRunning) return;
+
+                    // Now explore this node's neighbors
+                    exploreDFSNode(targetHash, targetNode);
+                    updateDFSStatus();
+
+                    // Check if we found the solution during exploration
+                    if (dfsBestEnergy === 0) {
+                        return; // stopAutoplay already called
+                    }
+
+                    // Continue to next node
+                    dfsAnimationId = setTimeout(processNextNode, stepDelay);
+                };
+
+                // Start animating path to target
+                currentPath = path;
+                pathQueue = path.slice(1);
+                pathAnimating = true;
+                animateDFSPathStep();
+            }
+
+            processNextNode();
+        }
+
+        function animateDFSPathStep() {
+            if (!dfsRunning) {
+                pathAnimating = false;
+                currentPath = [];
+                dfsOnAnimationComplete = null;
+                return;
+            }
+
+            if (pathQueue.length === 0) {
+                pathAnimating = false;
+                currentPath = [];
+                // Call the completion callback
+                if (dfsOnAnimationComplete) {
+                    const callback = dfsOnAnimationComplete;
+                    dfsOnAnimationComplete = null;
+                    callback();
+                }
+                return;
+            }
+
+            const nextHash = pathQueue.shift();
+            const nextNode = graphNodes.get(nextHash);
+
+            if (nextNode && nextNode.state) {
+                // Update game state
+                blocks = JSON.parse(JSON.stringify(nextNode.state));
+                moves++;
+                updateMoves();
+                render();
+
+                // Mark as visited and update graph
+                const prevHash = currentStateHash;
+                addGraphNode(blocks, true, prevHash);
+                currentStateHash = nextHash;
+
+                // Update visited count if this was unvisited
+                if (!nextNode.visited) {
+                    nextNode.visited = true;
+                    dfsVisitedCount++;
+                }
+
+                // Check for win
+                if (calculateEnergy(blocks) === 0) {
+                    dfsBestEnergy = 0;
+                    dfsBestState = JSON.parse(JSON.stringify(blocks));
+                    checkWin();
+                    stopAutoplay();
+                    return;
+                }
+
+                // Continue to next step after delay
+                const stepDelay = parseInt(document.getElementById('dfsStepDelay').value) || 1;
+                setTimeout(animateDFSPathStep, stepDelay);
+            } else {
+                pathAnimating = false;
+                currentPath = [];
+                if (dfsOnAnimationComplete) {
+                    const callback = dfsOnAnimationComplete;
+                    dfsOnAnimationComplete = null;
+                    callback();
+                }
+            }
+        }
+
+        function exploreDFSNode(nodeHash, node) {
+            // Mark this node as visited
+            if (!node.visited) {
+                node.visited = true;
+                dfsVisitedCount++;
+            }
+
+            // Get all valid moves from this state
+            const validMoves = getAllValidMoves(node.state);
+
+            for (const move of validMoves) {
+                const newState = applyMove(node.state, move);
+                const newHash = hashState(newState);
+
+                // Check if this is a new state
+                if (!graphNodes.has(newHash)) {
+                    // Add node (unvisited)
+                    addGraphNode(newState, false, nodeHash);
+                    addGraphEdge(nodeHash, newHash);
+
+                    // Add to stack for future exploration
+                    dfsStack.push(newHash);
+
+                    // Check if this is a better solution
+                    const energy = calculateEnergy(newState);
+                    if (energy < dfsBestEnergy) {
+                        dfsBestEnergy = energy;
+                        dfsBestState = JSON.parse(JSON.stringify(newState));
+                    }
+
+                    // Found solution!
+                    if (energy === 0) {
+                        // Navigate to solution
+                        blocks = JSON.parse(JSON.stringify(newState));
+                        currentStateHash = newHash;
+                        render();
+                        moves++;
+                        updateMoves();
+                        checkWin();
+                        stopAutoplay();
+                        return;
+                    }
+                } else {
+                    // Just add edge if it doesn't exist
+                    addGraphEdge(nodeHash, newHash);
+
+                    // Add to stack if not yet visited
+                    const existingNode = graphNodes.get(newHash);
+                    if (!existingNode.visited && !dfsStack.includes(newHash)) {
+                        dfsStack.push(newHash);
+                    }
+                }
+            }
+        }
+
+        function updateDFSStatus() {
+            document.getElementById('dfsStackSize').textContent = dfsStack.length;
+            document.getElementById('dfsVisited').textContent = dfsVisitedCount;
+            document.getElementById('dfsBestEnergy').textContent = dfsBestEnergy;
         }
 
         init();
