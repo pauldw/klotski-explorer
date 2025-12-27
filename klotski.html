@@ -559,10 +559,14 @@
         // Path animation state
         let pathAnimating = false;
         let pathQueue = [];
+        let currentPath = []; // Full path being animated (for highlighting)
+
+        // Hover state
+        let hoveredNodeHash = null;
 
         // Click handler to navigate to a node
         graphCanvas.addEventListener('click', (e) => {
-            if (isDraggingGraph || pathAnimating || saRunning) return;
+            if (isDraggingGraph || saRunning) return;
 
             const rect = graphCanvas.getBoundingClientRect();
             const clickX = e.clientX - rect.left;
@@ -587,6 +591,41 @@
             if (closestHash && closestHash !== currentStateHash) {
                 navigateToNode(closestHash);
             }
+        });
+
+        // Hover handler to highlight nodes
+        graphCanvas.addEventListener('mousemove', (e) => {
+            if (isDraggingGraph) {
+                hoveredNodeHash = null;
+                return;
+            }
+
+            const rect = graphCanvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // Find the closest node to the mouse
+            let closestHash = null;
+            let closestDist = Infinity;
+            const maxHoverDist = 20;
+
+            graphNodes.forEach((node, hash) => {
+                const proj = project3D(node.x, node.y, node.z);
+                const dx = proj.x - mouseX;
+                const dy = proj.y - mouseY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < closestDist && dist < maxHoverDist) {
+                    closestDist = dist;
+                    closestHash = hash;
+                }
+            });
+
+            hoveredNodeHash = closestHash;
+            graphCanvas.style.cursor = closestHash ? 'pointer' : (isDraggingGraph ? 'grabbing' : 'grab');
+        });
+
+        graphCanvas.addEventListener('mouseleave', () => {
+            hoveredNodeHash = null;
         });
 
         // BFS to find shortest path between two nodes
@@ -637,16 +676,24 @@
             const path = findShortestPath(currentStateHash, targetHash);
             if (!path || path.length < 2) return;
 
+            // Store full path for highlighting
+            currentPath = path;
             // Queue up the path (skip the first node, it's the current state)
             pathQueue = path.slice(1);
-            pathAnimating = true;
-            animatePathStep();
+
+            // If not already animating, start the animation
+            if (!pathAnimating) {
+                pathAnimating = true;
+                animatePathStep();
+            }
+            // If already animating, the new path will be picked up automatically
         }
 
         // Animate one step along the path
         function animatePathStep() {
             if (pathQueue.length === 0) {
                 pathAnimating = false;
+                currentPath = []; // Clear path highlighting
                 return;
             }
 
@@ -673,9 +720,11 @@
                     setTimeout(animatePathStep, 150);
                 } else {
                     pathAnimating = false;
+                    currentPath = [];
                 }
             } else {
                 pathAnimating = false;
+                currentPath = [];
             }
         }
 
@@ -1010,6 +1059,22 @@
             }
             graphCtx.stroke();
 
+            // Draw path being animated (bright yellow)
+            if (currentPath.length > 1) {
+                graphCtx.strokeStyle = 'rgba(255, 220, 50, 0.9)';
+                graphCtx.lineWidth = 2;
+                graphCtx.beginPath();
+                for (let i = 0; i < currentPath.length - 1; i++) {
+                    const projA = projectionCache.get(currentPath[i]);
+                    const projB = projectionCache.get(currentPath[i + 1]);
+                    if (!projA || !projB) continue;
+                    graphCtx.moveTo(projA.x, projA.y);
+                    graphCtx.lineTo(projB.x, projB.y);
+                }
+                graphCtx.stroke();
+                graphCtx.lineWidth = 1;
+            }
+
             // Draw nodes colored by energy (lower energy = greener/brighter)
             // Unvisited nodes are purple (same as unvisited edges)
             // Energy ranges from 0 (goal) to ~4 (max Manhattan distance)
@@ -1048,6 +1113,19 @@
                     graphCtx.beginPath();
                     graphCtx.arc(proj.x, proj.y, 4, 0, Math.PI * 2);
                     graphCtx.fill();
+                }
+            }
+
+            // Draw hovered node highlight (larger white circle)
+            if (hoveredNodeHash && hoveredNodeHash !== currentStateHash) {
+                const proj = projectionCache.get(hoveredNodeHash);
+                if (proj) {
+                    graphCtx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+                    graphCtx.lineWidth = 2;
+                    graphCtx.beginPath();
+                    graphCtx.arc(proj.x, proj.y, 8, 0, Math.PI * 2);
+                    graphCtx.stroke();
+                    graphCtx.lineWidth = 1;
                 }
             }
         }
