@@ -653,88 +653,159 @@
             document.getElementById('graphEdges').textContent = graphEdges.length;
         }
 
-        // Force-directed layout simulation step (3D)
+        // ==================== BARNES-HUT OCTREE ====================
+        class OctreeNode {
+            constructor(cx, cy, cz, size) {
+                this.cx = cx; this.cy = cy; this.cz = cz;
+                this.size = size;
+                this.mass = 0;
+                this.comX = 0; this.comY = 0; this.comZ = 0;
+                this.children = null;
+                this.body = null;
+            }
+
+            insert(node) {
+                if (this.mass === 0) {
+                    this.body = node;
+                    this.mass = 1;
+                    this.comX = node.x; this.comY = node.y; this.comZ = node.z;
+                    return;
+                }
+
+                if (this.children === null) {
+                    this.subdivide();
+                    if (this.body) {
+                        this.insertIntoChild(this.body);
+                        this.body = null;
+                    }
+                }
+
+                this.insertIntoChild(node);
+                // Update center of mass
+                const totalMass = this.mass + 1;
+                this.comX = (this.comX * this.mass + node.x) / totalMass;
+                this.comY = (this.comY * this.mass + node.y) / totalMass;
+                this.comZ = (this.comZ * this.mass + node.z) / totalMass;
+                this.mass = totalMass;
+            }
+
+            subdivide() {
+                const hs = this.size / 2;
+                const qs = this.size / 4;
+                this.children = [];
+                for (let i = 0; i < 8; i++) {
+                    const ox = (i & 1) ? qs : -qs;
+                    const oy = (i & 2) ? qs : -qs;
+                    const oz = (i & 4) ? qs : -qs;
+                    this.children.push(new OctreeNode(this.cx + ox, this.cy + oy, this.cz + oz, hs));
+                }
+            }
+
+            insertIntoChild(node) {
+                const idx = (node.x > this.cx ? 1 : 0) + (node.y > this.cy ? 2 : 0) + (node.z > this.cz ? 4 : 0);
+                this.children[idx].insert(node);
+            }
+
+            calculateForce(node, theta, repulsion) {
+                if (this.mass === 0) return { fx: 0, fy: 0, fz: 0 };
+
+                const dx = this.comX - node.x;
+                const dy = this.comY - node.y;
+                const dz = this.comZ - node.z;
+                const distSq = dx * dx + dy * dy + dz * dz;
+                const dist = Math.sqrt(distSq) || 1;
+
+                // If far enough away, treat as single body
+                if (this.children === null || (this.size / dist) < theta) {
+                    if (this.body === node) return { fx: 0, fy: 0, fz: 0 };
+                    const force = (repulsion * this.mass) / distSq;
+                    return {
+                        fx: -(dx / dist) * force,
+                        fy: -(dy / dist) * force,
+                        fz: -(dz / dist) * force
+                    };
+                }
+
+                // Otherwise recurse
+                let fx = 0, fy = 0, fz = 0;
+                for (const child of this.children) {
+                    const f = child.calculateForce(node, theta, repulsion);
+                    fx += f.fx; fy += f.fy; fz += f.fz;
+                }
+                return { fx, fy, fz };
+            }
+        }
+
+        function buildOctree(nodes) {
+            // Find bounds
+            let minX = Infinity, minY = Infinity, minZ = Infinity;
+            let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+            for (const node of nodes) {
+                minX = Math.min(minX, node.x); maxX = Math.max(maxX, node.x);
+                minY = Math.min(minY, node.y); maxY = Math.max(maxY, node.y);
+                minZ = Math.min(minZ, node.z); maxZ = Math.max(maxZ, node.z);
+            }
+            const cx = (minX + maxX) / 2;
+            const cy = (minY + maxY) / 2;
+            const cz = (minZ + maxZ) / 2;
+            const size = Math.max(maxX - minX, maxY - minY, maxZ - minZ) + 1;
+
+            const root = new OctreeNode(cx, cy, cz, size);
+            for (const node of nodes) {
+                root.insert(node);
+            }
+            return root;
+        }
+
+        // Force-directed layout simulation step (3D) with Barnes-Hut optimization
         function simulateForces() {
-            const nodes = Array.from(graphNodes.entries());
-            const repulsion = 2000;
-            const attraction = 0.05;
-            const damping = 0.3;
-            const centerPull = 0.002;
-            const maxVelocity = 10;
+            const nodes = Array.from(graphNodes.values());
+            const repulsion = 3000;
+            const attraction = 0.15;
+            const damping = 0.5;
+            const maxVelocity = 20;
+            const theta = 0.9; // Barnes-Hut threshold (higher = faster but less accurate)
 
             // Reset forces
-            nodes.forEach(([hash, node]) => {
-                node.fx = 0;
-                node.fy = 0;
-                node.fz = 0;
-            });
+            for (const node of nodes) {
+                node.fx = 0; node.fy = 0; node.fz = 0;
+            }
 
-            // Repulsion between all nodes
-            for (let i = 0; i < nodes.length; i++) {
-                for (let j = i + 1; j < nodes.length; j++) {
-                    const [, nodeA] = nodes[i];
-                    const [, nodeB] = nodes[j];
-
-                    let dx = nodeB.x - nodeA.x;
-                    let dy = nodeB.y - nodeA.y;
-                    let dz = nodeB.z - nodeA.z;
-                    let dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
-
-                    const force = repulsion / (dist * dist);
-                    const fx = (dx / dist) * force;
-                    const fy = (dy / dist) * force;
-                    const fz = (dz / dist) * force;
-
-                    nodeA.fx -= fx;
-                    nodeA.fy -= fy;
-                    nodeA.fz -= fz;
-                    nodeB.fx += fx;
-                    nodeB.fy += fy;
-                    nodeB.fz += fz;
+            // Build octree and calculate repulsion forces
+            if (nodes.length > 1) {
+                const octree = buildOctree(nodes);
+                for (const node of nodes) {
+                    const f = octree.calculateForce(node, theta, repulsion);
+                    node.fx += f.fx; node.fy += f.fy; node.fz += f.fz;
                 }
             }
 
             // Attraction along edges
-            graphEdges.forEach(edge => {
+            for (const edge of graphEdges) {
                 const nodeA = graphNodes.get(edge.from);
                 const nodeB = graphNodes.get(edge.to);
-                if (!nodeA || !nodeB) return;
+                if (!nodeA || !nodeB) continue;
 
-                let dx = nodeB.x - nodeA.x;
-                let dy = nodeB.y - nodeA.y;
-                let dz = nodeB.z - nodeA.z;
-                let dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+                const dx = nodeB.x - nodeA.x;
+                const dy = nodeB.y - nodeA.y;
+                const dz = nodeB.z - nodeA.z;
+                const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
 
                 const force = dist * attraction;
                 const fx = (dx / dist) * force;
                 const fy = (dy / dist) * force;
                 const fz = (dz / dist) * force;
 
-                nodeA.fx += fx;
-                nodeA.fy += fy;
-                nodeA.fz += fz;
-                nodeB.fx -= fx;
-                nodeB.fy -= fy;
-                nodeB.fz -= fz;
-            });
+                nodeA.fx += fx; nodeA.fy += fy; nodeA.fz += fz;
+                nodeB.fx -= fx; nodeB.fy -= fy; nodeB.fz -= fz;
+            }
 
-            // Center pull and update positions
-            const centerX = GRAPH_WIDTH / 2;
-            const centerY = GRAPH_HEIGHT / 2;
-            const centerZ = GRAPH_DEPTH / 2;
-
-            nodes.forEach(([hash, node]) => {
-                // Pull toward center
-                node.fx += (centerX - node.x) * centerPull;
-                node.fy += (centerY - node.y) * centerPull;
-                node.fz += (centerZ - node.z) * centerPull;
-
-                // Update velocity with damping
+            // Update positions
+            for (const node of nodes) {
                 node.vx = (node.vx + node.fx) * damping;
                 node.vy = (node.vy + node.fy) * damping;
                 node.vz = (node.vz + node.fz) * damping;
 
-                // Clamp velocity to prevent wild oscillations
                 const speed = Math.sqrt(node.vx * node.vx + node.vy * node.vy + node.vz * node.vz);
                 if (speed > maxVelocity) {
                     node.vx = (node.vx / speed) * maxVelocity;
@@ -745,91 +816,59 @@
                 node.x += node.vx;
                 node.y += node.vy;
                 node.z += node.vz;
-            });
+            }
         }
 
-        // Render the 3D graph
+        // Optimized render with batched drawing
         function renderGraph() {
             graphCtx.fillStyle = '#0d0d15';
             graphCtx.fillRect(0, 0, GRAPH_WIDTH, GRAPH_HEIGHT);
 
-            // Project all nodes to 2D and sort by depth for proper rendering
-            const projectedNodes = [];
+            // Pre-project all nodes and cache results
+            const projectionCache = new Map();
             graphNodes.forEach((node, hash) => {
-                const proj = project3D(node.x, node.y, node.z);
-                projectedNodes.push({ hash, node, proj });
+                projectionCache.set(hash, project3D(node.x, node.y, node.z));
             });
 
-            // Sort back to front (larger z = further away = draw first)
-            projectedNodes.sort((a, b) => b.proj.z - a.proj.z);
-
-            // Draw edges first (behind nodes)
+            // Batch draw all edges in a single path
+            graphCtx.strokeStyle = 'rgba(100, 100, 150, 0.25)';
             graphCtx.lineWidth = 1;
-            graphEdges.forEach(edge => {
-                const nodeA = graphNodes.get(edge.from);
-                const nodeB = graphNodes.get(edge.to);
-                if (!nodeA || !nodeB) return;
-
-                const projA = project3D(nodeA.x, nodeA.y, nodeA.z);
-                const projB = project3D(nodeB.x, nodeB.y, nodeB.z);
-
-                // Fade edges based on depth
-                const avgZ = (projA.z + projB.z) / 2;
-                const alpha = Math.max(0.1, Math.min(0.5, 0.4 - avgZ / 1000));
-                graphCtx.strokeStyle = `rgba(100, 100, 150, ${alpha})`;
-
-                graphCtx.beginPath();
+            graphCtx.beginPath();
+            for (const edge of graphEdges) {
+                const projA = projectionCache.get(edge.from);
+                const projB = projectionCache.get(edge.to);
+                if (!projA || !projB) continue;
                 graphCtx.moveTo(projA.x, projA.y);
                 graphCtx.lineTo(projB.x, projB.y);
-                graphCtx.stroke();
-            });
+            }
+            graphCtx.stroke();
 
-            // Draw nodes (sorted by depth) - small dots, current state slightly larger
-            projectedNodes.forEach(({ hash, node, proj }) => {
-                const isCurrentState = hash === currentStateHash;
-                const baseRadius = isCurrentState ? 4 : 1.5;
-                const radius = baseRadius * Math.max(0.5, proj.scale);
-
-                // Color based on energy (green = low/good, red = high/bad)
-                let r, g, b;
-                if (isCurrentState) {
-                    r = 250; g = 204; b = 21; // Yellow
-                } else if (node.energy === 0) {
-                    r = 74; g = 222; b = 128; // Green
-                } else {
-                    const t = Math.min(node.energy / 4, 1);
-                    r = Math.round(100 + t * 155);
-                    g = Math.round(200 - t * 150);
-                    b = Math.round(200 - t * 100);
-                }
-
-                // Adjust brightness based on depth
-                const depthFactor = Math.max(0.4, Math.min(1, proj.scale));
-                r = Math.round(r * depthFactor);
-                g = Math.round(g * depthFactor);
-                b = Math.round(b * depthFactor);
-
-                graphCtx.fillStyle = `rgb(${r},${g},${b})`;
-                graphCtx.beginPath();
-                graphCtx.arc(proj.x, proj.y, Math.max(1, radius), 0, Math.PI * 2);
-                graphCtx.fill();
-
-                // Highlight current state with a ring
-                if (isCurrentState) {
-                    graphCtx.strokeStyle = `rgb(${r},${g},${b})`;
+            // Draw current state marker
+            if (currentStateHash) {
+                const proj = projectionCache.get(currentStateHash);
+                if (proj) {
+                    graphCtx.fillStyle = '#facc15';
+                    graphCtx.beginPath();
+                    graphCtx.arc(proj.x, proj.y, 4, 0, Math.PI * 2);
+                    graphCtx.fill();
+                    graphCtx.strokeStyle = '#facc15';
                     graphCtx.lineWidth = 1.5;
                     graphCtx.beginPath();
-                    graphCtx.arc(proj.x, proj.y, Math.max(3, 6 * proj.scale), 0, Math.PI * 2);
+                    graphCtx.arc(proj.x, proj.y, 8, 0, Math.PI * 2);
                     graphCtx.stroke();
                 }
-            });
+            }
         }
 
         // Start graph animation loop
         function startGraphAnimation() {
             function animate() {
                 if (graphNodes.size > 0) {
-                    simulateForces();
+                    // Run multiple simulation steps per frame for faster settling
+                    const steps = Math.min(5, Math.max(1, Math.floor(10000 / (graphNodes.size + 1))));
+                    for (let i = 0; i < steps; i++) {
+                        simulateForces();
+                    }
                 }
                 renderGraph();
                 updateGraphStats();
