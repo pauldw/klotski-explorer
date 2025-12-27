@@ -505,17 +505,97 @@
         let bestState = null;
         let bestEnergy = Infinity;
 
-        // Force-directed graph state
+        // Force-directed 3D graph state
         const graphCanvas = document.getElementById('graphCanvas');
         const graphCtx = graphCanvas.getContext('2d');
         const GRAPH_WIDTH = 500;
         const GRAPH_HEIGHT = 500;
+        const GRAPH_DEPTH = 500;
 
-        let graphNodes = new Map(); // stateHash -> { x, y, vx, vy, energy }
+        let graphNodes = new Map(); // stateHash -> { x, y, z, vx, vy, vz, energy }
         let graphEdges = []; // [{ from: hash, to: hash }]
         let edgeSet = new Set(); // For quick duplicate checking
         let currentStateHash = null;
         let graphAnimationId = null;
+
+        // 3D rotation angles and zoom (controlled by mouse)
+        let rotationX = 0.3;
+        let rotationY = 0.5;
+        let zoom = 1.0;
+        let isDraggingGraph = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+
+        // Set up mouse controls for rotation
+        graphCanvas.addEventListener('mousedown', (e) => {
+            isDraggingGraph = true;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+            graphCanvas.style.cursor = 'grabbing';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDraggingGraph) return;
+            const deltaX = e.clientX - lastMouseX;
+            const deltaY = e.clientY - lastMouseY;
+            rotationY += deltaX * 0.01;
+            rotationX += deltaY * 0.01;
+            // Clamp X rotation to avoid flipping
+            rotationX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, rotationX));
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDraggingGraph = false;
+            graphCanvas.style.cursor = 'grab';
+        });
+
+        // Mouse wheel zoom
+        graphCanvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomSpeed = 0.001;
+            zoom *= 1 - e.deltaY * zoomSpeed;
+            // Clamp zoom level
+            zoom = Math.max(0.02, Math.min(10, zoom));
+        }, { passive: false });
+
+        graphCanvas.style.cursor = 'grab';
+
+        // Project 3D point to 2D screen coordinates
+        function project3D(x, y, z) {
+            // Center the coordinates
+            const cx = x - GRAPH_WIDTH / 2;
+            const cy = y - GRAPH_HEIGHT / 2;
+            const cz = z - GRAPH_DEPTH / 2;
+
+            // Rotate around Y axis
+            const cosY = Math.cos(rotationY);
+            const sinY = Math.sin(rotationY);
+            const x1 = cx * cosY - cz * sinY;
+            const z1 = cx * sinY + cz * cosY;
+
+            // Rotate around X axis
+            const cosX = Math.cos(rotationX);
+            const sinX = Math.sin(rotationX);
+            const y1 = cy * cosX - z1 * sinX;
+            const z2 = cy * sinX + z1 * cosX;
+
+            // Camera distance based on zoom (zoom out = camera further away)
+            const cameraDistance = 500 / zoom;
+            const z3 = z2 + cameraDistance;
+
+            // Perspective projection with fixed FOV
+            const fov = 400;
+            const scale = fov / (fov + z3);
+
+            return {
+                x: GRAPH_WIDTH / 2 + x1 * scale,
+                y: GRAPH_HEIGHT / 2 + y1 * scale,
+                z: z3,
+                scale: scale
+            };
+        }
 
         // Hash a state to a unique string (treating same-type blocks as interchangeable)
         function hashState(state) {
@@ -537,14 +617,17 @@
         function addGraphNode(state) {
             const hash = hashState(state);
             if (!graphNodes.has(hash)) {
-                // Position new nodes randomly near center
-                const angle = Math.random() * Math.PI * 2;
+                // Position new nodes randomly in 3D space near center
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.random() * Math.PI;
                 const radius = 50 + Math.random() * 100;
                 graphNodes.set(hash, {
-                    x: GRAPH_WIDTH / 2 + Math.cos(angle) * radius,
-                    y: GRAPH_HEIGHT / 2 + Math.sin(angle) * radius,
+                    x: GRAPH_WIDTH / 2 + Math.sin(phi) * Math.cos(theta) * radius,
+                    y: GRAPH_HEIGHT / 2 + Math.sin(phi) * Math.sin(theta) * radius,
+                    z: GRAPH_DEPTH / 2 + Math.cos(phi) * radius,
                     vx: 0,
                     vy: 0,
+                    vz: 0,
                     energy: calculateEnergy(state)
                 });
             }
@@ -576,18 +659,20 @@
             document.getElementById('graphEdges').textContent = graphEdges.length;
         }
 
-        // Force-directed layout simulation step
+        // Force-directed layout simulation step (3D)
         function simulateForces() {
             const nodes = Array.from(graphNodes.entries());
-            const repulsion = 1000;
+            const repulsion = 2000;
             const attraction = 0.05;
-            const damping = 0.9;
-            const centerPull = 0.01;
+            const damping = 0.3;
+            const centerPull = 0.002;
+            const maxVelocity = 10;
 
             // Reset forces
             nodes.forEach(([hash, node]) => {
                 node.fx = 0;
                 node.fy = 0;
+                node.fz = 0;
             });
 
             // Repulsion between all nodes
@@ -598,16 +683,20 @@
 
                     let dx = nodeB.x - nodeA.x;
                     let dy = nodeB.y - nodeA.y;
-                    let dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                    let dz = nodeB.z - nodeA.z;
+                    let dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
 
                     const force = repulsion / (dist * dist);
                     const fx = (dx / dist) * force;
                     const fy = (dy / dist) * force;
+                    const fz = (dz / dist) * force;
 
                     nodeA.fx -= fx;
                     nodeA.fy -= fy;
+                    nodeA.fz -= fz;
                     nodeB.fx += fx;
                     nodeB.fy += fy;
+                    nodeB.fz += fz;
                 }
             }
 
@@ -619,85 +708,124 @@
 
                 let dx = nodeB.x - nodeA.x;
                 let dy = nodeB.y - nodeA.y;
-                let dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                let dz = nodeB.z - nodeA.z;
+                let dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
 
                 const force = dist * attraction;
                 const fx = (dx / dist) * force;
                 const fy = (dy / dist) * force;
+                const fz = (dz / dist) * force;
 
                 nodeA.fx += fx;
                 nodeA.fy += fy;
+                nodeA.fz += fz;
                 nodeB.fx -= fx;
                 nodeB.fy -= fy;
+                nodeB.fz -= fz;
             });
 
             // Center pull and update positions
+            const centerX = GRAPH_WIDTH / 2;
+            const centerY = GRAPH_HEIGHT / 2;
+            const centerZ = GRAPH_DEPTH / 2;
+
             nodes.forEach(([hash, node]) => {
                 // Pull toward center
-                node.fx += (GRAPH_WIDTH / 2 - node.x) * centerPull;
-                node.fy += (GRAPH_HEIGHT / 2 - node.y) * centerPull;
+                node.fx += (centerX - node.x) * centerPull;
+                node.fy += (centerY - node.y) * centerPull;
+                node.fz += (centerZ - node.z) * centerPull;
 
-                // Update velocity and position
+                // Update velocity with damping
                 node.vx = (node.vx + node.fx) * damping;
                 node.vy = (node.vy + node.fy) * damping;
+                node.vz = (node.vz + node.fz) * damping;
+
+                // Clamp velocity to prevent wild oscillations
+                const speed = Math.sqrt(node.vx * node.vx + node.vy * node.vy + node.vz * node.vz);
+                if (speed > maxVelocity) {
+                    node.vx = (node.vx / speed) * maxVelocity;
+                    node.vy = (node.vy / speed) * maxVelocity;
+                    node.vz = (node.vz / speed) * maxVelocity;
+                }
+
                 node.x += node.vx;
                 node.y += node.vy;
-
-                // Keep in bounds
-                node.x = Math.max(20, Math.min(GRAPH_WIDTH - 20, node.x));
-                node.y = Math.max(20, Math.min(GRAPH_HEIGHT - 20, node.y));
+                node.z += node.vz;
             });
         }
 
-        // Render the graph
+        // Render the 3D graph
         function renderGraph() {
             graphCtx.fillStyle = '#0d0d15';
             graphCtx.fillRect(0, 0, GRAPH_WIDTH, GRAPH_HEIGHT);
 
-            // Draw edges
-            graphCtx.strokeStyle = 'rgba(100, 100, 150, 0.3)';
+            // Project all nodes to 2D and sort by depth for proper rendering
+            const projectedNodes = [];
+            graphNodes.forEach((node, hash) => {
+                const proj = project3D(node.x, node.y, node.z);
+                projectedNodes.push({ hash, node, proj });
+            });
+
+            // Sort back to front (larger z = further away = draw first)
+            projectedNodes.sort((a, b) => b.proj.z - a.proj.z);
+
+            // Draw edges first (behind nodes)
             graphCtx.lineWidth = 1;
             graphEdges.forEach(edge => {
                 const nodeA = graphNodes.get(edge.from);
                 const nodeB = graphNodes.get(edge.to);
                 if (!nodeA || !nodeB) return;
 
+                const projA = project3D(nodeA.x, nodeA.y, nodeA.z);
+                const projB = project3D(nodeB.x, nodeB.y, nodeB.z);
+
+                // Fade edges based on depth
+                const avgZ = (projA.z + projB.z) / 2;
+                const alpha = Math.max(0.1, Math.min(0.5, 0.4 - avgZ / 1000));
+                graphCtx.strokeStyle = `rgba(100, 100, 150, ${alpha})`;
+
                 graphCtx.beginPath();
-                graphCtx.moveTo(nodeA.x, nodeA.y);
-                graphCtx.lineTo(nodeB.x, nodeB.y);
+                graphCtx.moveTo(projA.x, projA.y);
+                graphCtx.lineTo(projB.x, projB.y);
                 graphCtx.stroke();
             });
 
-            // Draw nodes
-            graphNodes.forEach((node, hash) => {
+            // Draw nodes (sorted by depth) - small dots, current state slightly larger
+            projectedNodes.forEach(({ hash, node, proj }) => {
                 const isCurrentState = hash === currentStateHash;
-                const radius = isCurrentState ? 8 : 4;
+                const baseRadius = isCurrentState ? 4 : 1.5;
+                const radius = baseRadius * Math.max(0.5, proj.scale);
 
                 // Color based on energy (green = low/good, red = high/bad)
-                let color;
+                let r, g, b;
                 if (isCurrentState) {
-                    color = '#facc15'; // Yellow for current
+                    r = 250; g = 204; b = 21; // Yellow
                 } else if (node.energy === 0) {
-                    color = '#4ade80'; // Green for solved
+                    r = 74; g = 222; b = 128; // Green
                 } else {
                     const t = Math.min(node.energy / 4, 1);
-                    const r = Math.round(100 + t * 155);
-                    const g = Math.round(200 - t * 150);
-                    const b = Math.round(200 - t * 100);
-                    color = `rgb(${r},${g},${b})`;
+                    r = Math.round(100 + t * 155);
+                    g = Math.round(200 - t * 150);
+                    b = Math.round(200 - t * 100);
                 }
 
-                graphCtx.fillStyle = color;
+                // Adjust brightness based on depth
+                const depthFactor = Math.max(0.4, Math.min(1, proj.scale));
+                r = Math.round(r * depthFactor);
+                g = Math.round(g * depthFactor);
+                b = Math.round(b * depthFactor);
+
+                graphCtx.fillStyle = `rgb(${r},${g},${b})`;
                 graphCtx.beginPath();
-                graphCtx.arc(node.x, node.y, radius, 0, Math.PI * 2);
+                graphCtx.arc(proj.x, proj.y, Math.max(1, radius), 0, Math.PI * 2);
                 graphCtx.fill();
 
                 // Highlight current state with a ring
                 if (isCurrentState) {
-                    graphCtx.strokeStyle = '#facc15';
-                    graphCtx.lineWidth = 2;
+                    graphCtx.strokeStyle = `rgb(${r},${g},${b})`;
+                    graphCtx.lineWidth = 1.5;
                     graphCtx.beginPath();
-                    graphCtx.arc(node.x, node.y, 12, 0, Math.PI * 2);
+                    graphCtx.arc(proj.x, proj.y, Math.max(3, 6 * proj.scale), 0, Math.PI * 2);
                     graphCtx.stroke();
                 }
             });
@@ -708,9 +836,9 @@
             function animate() {
                 if (graphNodes.size > 0) {
                     simulateForces();
-                    renderGraph();
-                    updateGraphStats();
                 }
+                renderGraph();
+                updateGraphStats();
                 graphAnimationId = requestAnimationFrame(animate);
             }
             animate();
