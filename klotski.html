@@ -97,6 +97,14 @@
             font-weight: bold;
         }
 
+        .win-stat .stat-value {
+            color: #ef4444;
+        }
+
+        .win-stat.solved .stat-value {
+            color: #4ade80;
+        }
+
         .board-container {
             position: relative;
             padding: 15px;
@@ -500,49 +508,6 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
             opacity: 0.6;
         }
-
-        .win-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            z-index: 100;
-        }
-
-        .win-overlay.show {
-            display: flex;
-        }
-
-        .win-message {
-            color: #4ade80;
-            font-size: 48px;
-            font-weight: bold;
-            margin-bottom: 20px;
-            text-shadow: 0 0 20px rgba(74, 222, 128, 0.5);
-        }
-
-        .win-stats {
-            color: #fff;
-            font-size: 24px;
-            margin-bottom: 30px;
-        }
-
-        .win-buttons {
-            display: flex;
-            gap: 15px;
-        }
-
-        .explore-btn {
-            background: linear-gradient(145deg, #8b5cf6, #7c3aed);
-            color: white;
-            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
-        }
     </style>
 </head>
 <body>
@@ -560,6 +525,10 @@
             <div class="stat">
                 <div class="stat-label">TIME</div>
                 <div class="stat-value" id="time">0:00</div>
+            </div>
+            <div class="stat win-stat" id="winStat">
+                <div class="stat-label">SOLVED</div>
+                <div class="stat-value" id="winStatus">✗</div>
             </div>
         </div>
 
@@ -697,15 +666,6 @@
     </div>
 
     <canvas id="previewCanvas" class="preview-canvas"></canvas>
-
-    <div class="win-overlay" id="winOverlay">
-        <div class="win-message">You Win!</div>
-        <div class="win-stats" id="winStats"></div>
-        <div class="win-buttons">
-            <button class="explore-btn" onclick="keepExploring()">Keep Exploring</button>
-            <button class="reset-btn" onclick="reset()">Play Again</button>
-        </div>
-    </div>
 
     <script>
         const CELL_SIZE = 70;
@@ -1131,11 +1091,11 @@
                 addGraphNode(blocks, true, prevHash); // This will mark it visited and add neighbors
                 currentStateHash = nextHash;
 
-                // Check for win
-                const won = checkWin();
+                // Check for win (but don't stop animation)
+                checkWin();
 
-                // Continue to next step after delay, unless we won
-                if (pathQueue.length > 0 && !document.getElementById('winOverlay').classList.contains('show')) {
+                // Continue to next step after delay
+                if (pathQueue.length > 0) {
                     setTimeout(animatePathStep, getStepDelay());
                 } else {
                     pathAnimating = false;
@@ -1846,17 +1806,26 @@
             document.removeEventListener('touchend', endDrag);
         }
 
+        // Track if solution has been found
+        let solutionFound = false;
+
         function checkWin() {
             const mainBlock = blocks.find(b => b.id === 'main');
             if (mainBlock.x === 1 && mainBlock.y === 3) {
-                clearInterval(timerInterval);
-                const elapsed = Math.floor((Date.now() - startTime) / 1000);
-                const mins = Math.floor(elapsed / 60);
-                const secs = elapsed % 60;
-                document.getElementById('winStats').textContent =
-                    `Moves: ${moves} | Time: ${mins}:${secs.toString().padStart(2, '0')}`;
-                document.getElementById('winOverlay').classList.add('show');
+                if (!solutionFound) {
+                    solutionFound = true;
+                    document.getElementById('winStat').classList.add('solved');
+                    document.getElementById('winStatus').textContent = '✓';
+                }
+                return true;
             }
+            return false;
+        }
+
+        function resetWinStatus() {
+            solutionFound = false;
+            document.getElementById('winStat').classList.remove('solved');
+            document.getElementById('winStatus').textContent = '✗';
         }
 
         function undo() {
@@ -1874,12 +1843,8 @@
         function reset() {
             stopAutoplay();
             stopGraphAnimation();
-            document.getElementById('winOverlay').classList.remove('show');
+            resetWinStatus();
             init();
-        }
-
-        function keepExploring() {
-            document.getElementById('winOverlay').classList.remove('show');
         }
 
         // ==================== AUTOPLAY ====================
@@ -2135,7 +2100,7 @@
                 if (!saRunning) return;
 
                 for (let i = 0; i < iterationsPerFrame; i++) {
-                    if (temperature < minTemperature || currentEnergy === 0) {
+                    if (temperature < minTemperature) {
                         // SA complete - animate path to best state using unified animator
                         saRunning = false;
                         document.getElementById('saStatus').classList.remove('show');
@@ -2144,17 +2109,13 @@
                             // Navigate to best state using the unified path animator
                             const path = findShortestPath(currentStateHash, bestStateHash);
                             setPath(path, () => {
-                                if (bestEnergy === 0) {
-                                    checkWin();
-                                }
+                                checkWin();
                                 document.getElementById('autoBtn').textContent = 'Autoplay';
                                 document.getElementById('autoBtn').classList.remove('running');
                             });
                         } else {
                             // Already at best state
-                            if (bestEnergy === 0) {
-                                checkWin();
-                            }
+                            checkWin();
                             document.getElementById('autoBtn').textContent = 'Autoplay';
                             document.getElementById('autoBtn').classList.remove('running');
                         }
@@ -2210,14 +2171,9 @@
                 document.getElementById('saBest').textContent = bestEnergy;
                 document.getElementById('saIter').textContent = iteration;
 
-                // Check for win during exploration
+                // Check for win during exploration (but don't stop)
                 if (currentEnergy === 0) {
-                    saRunning = false;
-                    document.getElementById('saStatus').classList.remove('show');
                     checkWin();
-                    document.getElementById('autoBtn').textContent = 'Autoplay';
-                    document.getElementById('autoBtn').classList.remove('running');
-                    return;
                 }
 
                 saAnimationId = requestAnimationFrame(step);
@@ -2274,11 +2230,6 @@
                     exploreNode(targetHash, targetNode);
                     updateBFSStatus();
 
-                    // Check if we found the solution during exploration
-                    if (bfsBestEnergy === 0) {
-                        return; // stopAutoplay already called
-                    }
-
                     // Continue to next node
                     bfsAnimationId = setTimeout(processNextNode, getStepDelay());
                 });
@@ -2317,17 +2268,9 @@
                         bfsBestState = JSON.parse(JSON.stringify(newState));
                     }
 
-                    // Found solution!
+                    // Check if solution found (but don't stop)
                     if (energy === 0) {
-                        // Navigate to solution
-                        blocks = JSON.parse(JSON.stringify(newState));
-                        currentStateHash = newHash;
-                        render();
-                        moves++;
-                        updateMoves();
                         checkWin();
-                        stopAutoplay();
-                        return;
                     }
                 } else {
                     // Just add edge if it doesn't exist
@@ -2454,11 +2397,6 @@
                     exploreDFSNode(targetHash, targetNode);
                     updateDFSStatus();
 
-                    // Check if we found the solution during exploration
-                    if (dfsBestEnergy === 0) {
-                        return; // stopAutoplay already called
-                    }
-
                     // Continue to next node
                     dfsAnimationId = setTimeout(processNextNode, getStepDelay());
                 });
@@ -2497,17 +2435,9 @@
                         dfsBestState = JSON.parse(JSON.stringify(newState));
                     }
 
-                    // Found solution!
+                    // Check if solution found (but don't stop)
                     if (energy === 0) {
-                        // Navigate to solution
-                        blocks = JSON.parse(JSON.stringify(newState));
-                        currentStateHash = newHash;
-                        render();
-                        moves++;
-                        updateMoves();
                         checkWin();
-                        stopAutoplay();
-                        return;
                     }
                 } else {
                     // Just add edge if it doesn't exist
