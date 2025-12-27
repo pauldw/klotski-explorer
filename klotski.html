@@ -690,6 +690,7 @@
 
             graphNodes.forEach((node, hash) => {
                 const proj = project3D(node.x, node.y, node.z);
+                if (!proj) return; // Skip nodes behind camera
                 const dx = proj.x - clickX;
                 const dy = proj.y - clickY;
                 const dist = Math.sqrt(dx * dx + dy * dy);
@@ -723,6 +724,7 @@
 
             graphNodes.forEach((node, hash) => {
                 const proj = project3D(node.x, node.y, node.z);
+                if (!proj) return; // Skip nodes behind camera
                 const dx = proj.x - mouseX;
                 const dy = proj.y - mouseY;
                 const dist = Math.sqrt(dx * dx + dy * dy);
@@ -853,10 +855,24 @@
 
         // Project 3D point to 2D screen coordinates
         function project3D(x, y, z) {
-            // Center the coordinates
-            const cx = x - GRAPH_WIDTH / 2;
-            const cy = y - GRAPH_HEIGHT / 2;
-            const cz = z - GRAPH_DEPTH / 2;
+            // Get rotation center (current node position, or graph center if none)
+            let centerX = GRAPH_WIDTH / 2;
+            let centerY = GRAPH_HEIGHT / 2;
+            let centerZ = GRAPH_DEPTH / 2;
+
+            if (currentStateHash) {
+                const currentNode = graphNodes.get(currentStateHash);
+                if (currentNode) {
+                    centerX = currentNode.x;
+                    centerY = currentNode.y;
+                    centerZ = currentNode.z;
+                }
+            }
+
+            // Center the coordinates around rotation center
+            const cx = x - centerX;
+            const cy = y - centerY;
+            const cz = z - centerZ;
 
             // Rotate around Y axis
             const cosY = Math.cos(rotationY);
