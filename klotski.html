@@ -205,20 +205,69 @@
             box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
         }
 
-        .undo-btn {
-            background: linear-gradient(145deg, #6366f1, #4f46e5);
-            color: white;
-            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+        .auto-btn-container {
+            position: relative;
+            display: flex;
         }
 
         .auto-btn {
             background: linear-gradient(145deg, #f97316, #ea580c);
             color: white;
             box-shadow: 0 4px 15px rgba(249, 115, 22, 0.4);
+            border-radius: 8px 0 0 8px;
         }
 
-        .auto-btn.running {
+        .auto-btn-dropdown {
+            background: linear-gradient(145deg, #ea580c, #c2410c);
+            color: white;
+            border: none;
+            padding: 10px 8px;
+            border-radius: 0 8px 8px 0;
+            cursor: pointer;
+            font-size: 10px;
+            box-shadow: 0 4px 15px rgba(249, 115, 22, 0.4);
+        }
+
+        .auto-btn-dropdown:hover {
+            background: linear-gradient(145deg, #c2410c, #9a3412);
+        }
+
+        .auto-btn-container.running .auto-btn {
             background: linear-gradient(145deg, #ef4444, #dc2626);
+            border-radius: 8px;
+        }
+
+        .auto-btn-container.running .auto-btn-dropdown {
+            display: none;
+        }
+
+        .auto-btn-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 5px;
+            background: #2d2d44;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            z-index: 100;
+            min-width: 180px;
+        }
+
+        .auto-btn-menu.show {
+            display: block;
+        }
+
+        .auto-btn-option {
+            padding: 10px 15px;
+            cursor: pointer;
+            white-space: nowrap;
+            color: #fff;
+        }
+
+        .auto-btn-option:hover {
+            background: rgba(249, 115, 22, 0.3);
         }
 
         .sa-status {
@@ -333,50 +382,6 @@
             transform: none;
         }
 
-        .autoplay-settings {
-            margin-top: 15px;
-            padding: 10px 20px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 8px;
-            color: #fff;
-            font-size: 14px;
-        }
-
-        .autoplay-settings .settings-title {
-            color: #aaa;
-            font-size: 12px;
-            text-transform: uppercase;
-            margin-bottom: 10px;
-            text-align: center;
-        }
-
-        .autoplay-type-selector {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .autoplay-type-selector label {
-            font-size: 11px;
-            color: #aaa;
-        }
-
-        .autoplay-type-selector select {
-            padding: 8px 10px;
-            border: none;
-            border-radius: 6px;
-            background: rgba(0,0,0,0.3);
-            color: #fff;
-            font-size: 14px;
-            width: 100%;
-            cursor: pointer;
-        }
-
-        .autoplay-type-selector select:focus {
-            outline: 2px solid #f97316;
-        }
-
-
         .dfs-status {
             margin-top: 15px;
             padding: 10px 20px;
@@ -476,20 +481,15 @@
         </div>
 
         <div class="controls">
-            <button class="undo-btn" onclick="undo()">Undo</button>
             <button class="reset-btn" onclick="reset()">Reset</button>
-            <button class="auto-btn" id="autoBtn" onclick="toggleAutoplay()">Autoplay</button>
-        </div>
-
-        <div class="autoplay-settings">
-            <div class="settings-title">Autoplay Settings</div>
-            <div class="autoplay-type-selector">
-                <label for="autoplayType">Algorithm</label>
-                <select id="autoplayType" onchange="onAutoplayTypeChange()">
-                    <option value="sa">Simulated Annealing</option>
-                    <option value="bfs">BFS (Breadth-First)</option>
-                    <option value="dfs">DFS (Depth-First)</option>
-                </select>
+            <div class="auto-btn-container" id="autoBtnContainer">
+                <button class="auto-btn" id="autoBtn" onclick="toggleAutoplay()">Simulated Annealing</button>
+                <button class="auto-btn-dropdown" id="autoBtnDropdown" onclick="toggleAutoplayMenu(event)">▼</button>
+                <div class="auto-btn-menu" id="autoBtnMenu">
+                    <div class="auto-btn-option" onclick="selectAutoplayType('sa')">Simulated Annealing</div>
+                    <div class="auto-btn-option" onclick="selectAutoplayType('bfs')">Breadth-First Search</div>
+                    <div class="auto-btn-option" onclick="selectAutoplayType('dfs')">Depth-First Search</div>
+                </div>
             </div>
         </div>
 
@@ -1786,12 +1786,39 @@
 
         // ==================== AUTOPLAY ====================
 
-        function onAutoplayTypeChange() {
-            autoplayType = document.getElementById('autoplayType').value;
-            const saSettings = document.getElementById('saSettings');
+        const autoplayNames = {
+            sa: 'Simulated Annealing',
+            bfs: 'Breadth-First Search',
+            dfs: 'Depth-First Search'
+        };
 
-            saSettings.style.display = autoplayType === 'sa' ? 'block' : 'none';
+        function getAutoplayButtonText() {
+            return autoplayNames[autoplayType];
         }
+
+        function toggleAutoplayMenu(e) {
+            e.stopPropagation();
+            const menu = document.getElementById('autoBtnMenu');
+            menu.classList.toggle('show');
+        }
+
+        function selectAutoplayType(type) {
+            autoplayType = type;
+            document.getElementById('autoBtn').textContent = getAutoplayButtonText();
+            document.getElementById('autoBtnMenu').classList.remove('show');
+
+            // Show/hide SA settings
+            const saSettings = document.getElementById('saSettings');
+            saSettings.style.display = type === 'sa' ? 'block' : 'none';
+        }
+
+        // Close menu when clicking elsewhere
+        document.addEventListener('click', (e) => {
+            const container = document.getElementById('autoBtnContainer');
+            if (!container.contains(e.target)) {
+                document.getElementById('autoBtnMenu').classList.remove('show');
+            }
+        });
 
         function isAutoplayRunning() {
             return saRunning || bfsRunning || dfsRunning;
@@ -1807,7 +1834,7 @@
 
         function startAutoplay() {
             document.getElementById('autoBtn').textContent = 'Stop';
-            document.getElementById('autoBtn').classList.add('running');
+            document.getElementById('autoBtnContainer').classList.add('running');
 
             // Initialize graph with current state (visited = true)
             currentStateHash = addGraphNode(blocks, true);
@@ -1918,8 +1945,8 @@
             }
             document.getElementById('dfsStatus').classList.remove('show');
 
-            document.getElementById('autoBtn').textContent = 'Autoplay';
-            document.getElementById('autoBtn').classList.remove('running');
+            document.getElementById('autoBtn').textContent = getAutoplayButtonText();
+            document.getElementById('autoBtnContainer').classList.remove('running');
         }
 
         // Energy function: Manhattan distance from main block to goal
@@ -2041,8 +2068,8 @@
                         // SA complete - just stop where we are
                         saRunning = false;
                         document.getElementById('saStatus').classList.remove('show');
-                        document.getElementById('autoBtn').textContent = 'Autoplay';
-                        document.getElementById('autoBtn').classList.remove('running');
+                        document.getElementById('autoBtn').textContent = getAutoplayButtonText();
+                        document.getElementById('autoBtnContainer').classList.remove('running');
                         return;
                     }
 
