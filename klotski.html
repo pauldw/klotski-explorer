@@ -860,9 +860,15 @@
             const cameraDistance = 500 / zoom;
             const z3 = z2 + cameraDistance;
 
+            // Near plane clipping - don't render points behind or too close to camera
+            const nearPlane = 1;
+            if (z3 < nearPlane) {
+                return null; // Behind camera
+            }
+
             // Perspective projection with fixed FOV
             const fov = 400;
-            const scale = fov / (fov + z3);
+            const scale = fov / z3;
 
             return {
                 x: GRAPH_WIDTH / 2 + x1 * scale,
