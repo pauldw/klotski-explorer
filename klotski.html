@@ -607,10 +607,12 @@
             }).join('|');
         }
 
-        // Add a node to the graph
-        function addGraphNode(state) {
+        // Add a node to the graph (unvisited by default)
+        function addGraphNode(state, visited = false) {
             const hash = hashState(state);
-            if (!graphNodes.has(hash)) {
+            const isNew = !graphNodes.has(hash);
+
+            if (isNew) {
                 // Position new nodes randomly in 3D space near center
                 const theta = Math.random() * Math.PI * 2;
                 const phi = Math.random() * Math.PI;
@@ -622,9 +624,25 @@
                     vx: 0,
                     vy: 0,
                     vz: 0,
-                    energy: calculateEnergy(state)
+                    energy: calculateEnergy(state),
+                    visited: visited
                 });
+            } else if (visited) {
+                // Mark as visited if it was previously unvisited
+                graphNodes.get(hash).visited = true;
             }
+
+            // If this is a newly visited node, add unvisited neighbors
+            if (visited && (isNew || !graphNodes.get(hash).neighborsAdded)) {
+                graphNodes.get(hash).neighborsAdded = true;
+                const validMoves = getAllValidMoves(state);
+                for (const move of validMoves) {
+                    const neighborState = applyMove(state, move);
+                    const neighborHash = addGraphNode(neighborState, false); // Add as unvisited
+                    addGraphEdge(hash, neighborHash);
+                }
+            }
+
             return hash;
         }
 
@@ -830,16 +848,41 @@
                 projectionCache.set(hash, project3D(node.x, node.y, node.z));
             });
 
-            // Batch draw all edges in a single path
-            graphCtx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+            // Batch draw edges - separate paths for visited and unvisited edges
+            // First, draw edges to unvisited nodes (bright blueish purple)
+            graphCtx.strokeStyle = 'rgba(160, 120, 255, 0.5)';
             graphCtx.lineWidth = 1;
             graphCtx.beginPath();
             for (const edge of graphEdges) {
-                const projA = projectionCache.get(edge.from);
-                const projB = projectionCache.get(edge.to);
-                if (!projA || !projB) continue;
-                graphCtx.moveTo(projA.x, projA.y);
-                graphCtx.lineTo(projB.x, projB.y);
+                const nodeA = graphNodes.get(edge.from);
+                const nodeB = graphNodes.get(edge.to);
+                if (!nodeA || !nodeB) continue;
+                // If either endpoint is unvisited, draw in darker batch
+                if (!nodeA.visited || !nodeB.visited) {
+                    const projA = projectionCache.get(edge.from);
+                    const projB = projectionCache.get(edge.to);
+                    if (!projA || !projB) continue;
+                    graphCtx.moveTo(projA.x, projA.y);
+                    graphCtx.lineTo(projB.x, projB.y);
+                }
+            }
+            graphCtx.stroke();
+
+            // Then, draw edges between visited nodes (dimmer white)
+            graphCtx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            graphCtx.beginPath();
+            for (const edge of graphEdges) {
+                const nodeA = graphNodes.get(edge.from);
+                const nodeB = graphNodes.get(edge.to);
+                if (!nodeA || !nodeB) continue;
+                // Only draw if both endpoints are visited
+                if (nodeA.visited && nodeB.visited) {
+                    const projA = projectionCache.get(edge.from);
+                    const projB = projectionCache.get(edge.to);
+                    if (!projA || !projB) continue;
+                    graphCtx.moveTo(projA.x, projA.y);
+                    graphCtx.lineTo(projB.x, projB.y);
+                }
             }
             graphCtx.stroke();
 
@@ -888,8 +931,8 @@
             startTimer();
             render();
             clearGraph();
-            // Add initial state to graph
-            currentStateHash = addGraphNode(blocks);
+            // Add initial state to graph (visited = true)
+            currentStateHash = addGraphNode(blocks, true);
             startGraphAnimation();
         }
 
@@ -1054,9 +1097,9 @@
                 moves++;
                 updateMoves();
 
-                // Update graph with new state
+                // Update graph with new state (visited = true)
                 const prevHash = currentStateHash;
-                const newHash = addGraphNode(blocks);
+                const newHash = addGraphNode(blocks, true);
                 if (prevHash) {
                     addGraphEdge(prevHash, newHash);
                 }
@@ -1123,8 +1166,8 @@
             document.getElementById('autoBtn').classList.add('running');
             document.getElementById('saStatus').classList.add('show');
 
-            // Initialize graph with current state
-            currentStateHash = addGraphNode(blocks);
+            // Initialize graph with current state (visited = true)
+            currentStateHash = addGraphNode(blocks, true);
 
             runSimulatedAnnealing();
         }
@@ -1246,8 +1289,8 @@
             let currentEnergy = calculateEnergy(currentState);
             let iteration = 0;
 
-            // Ensure current state is tracked in graph
-            currentStateHash = addGraphNode(currentState);
+            // Ensure current state is tracked in graph (visited = true)
+            currentStateHash = addGraphNode(currentState, true);
 
             function step() {
                 if (!saRunning) return;
@@ -1285,9 +1328,9 @@
 
                     // Accept or reject the move
                     if (Math.random() < acceptanceProbability) {
-                        // Add the new state to the graph
+                        // Add the new state to the graph (visited = true)
                         const prevHash = currentStateHash;
-                        const newHash = addGraphNode(newState);
+                        const newHash = addGraphNode(newState, true);
                         addGraphEdge(prevHash, newHash);
                         currentStateHash = newHash;
 
