@@ -831,7 +831,7 @@
             });
 
             // Batch draw all edges in a single path
-            graphCtx.strokeStyle = 'rgba(100, 100, 150, 0.25)';
+            graphCtx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
             graphCtx.lineWidth = 1;
             graphCtx.beginPath();
             for (const edge of graphEdges) {
@@ -843,19 +843,14 @@
             }
             graphCtx.stroke();
 
-            // Draw current state marker
+            // Draw current state marker - small subtle yellow dot
             if (currentStateHash) {
                 const proj = projectionCache.get(currentStateHash);
                 if (proj) {
-                    graphCtx.fillStyle = '#facc15';
+                    graphCtx.fillStyle = 'rgba(250, 204, 21, 0.8)';
                     graphCtx.beginPath();
-                    graphCtx.arc(proj.x, proj.y, 4, 0, Math.PI * 2);
+                    graphCtx.arc(proj.x, proj.y, 3, 0, Math.PI * 2);
                     graphCtx.fill();
-                    graphCtx.strokeStyle = '#facc15';
-                    graphCtx.lineWidth = 1.5;
-                    graphCtx.beginPath();
-                    graphCtx.arc(proj.x, proj.y, 8, 0, Math.PI * 2);
-                    graphCtx.stroke();
                 }
             }
         }
