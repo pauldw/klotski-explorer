@@ -365,6 +365,17 @@
             font-size: 24px;
             margin-bottom: 30px;
         }
+
+        .win-buttons {
+            display: flex;
+            gap: 15px;
+        }
+
+        .explore-btn {
+            background: linear-gradient(145deg, #8b5cf6, #7c3aed);
+            color: white;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+        }
     </style>
 </head>
 <body>
@@ -464,7 +475,10 @@
     <div class="win-overlay" id="winOverlay">
         <div class="win-message">You Win!</div>
         <div class="win-stats" id="winStats"></div>
-        <button class="reset-btn" onclick="reset()">Play Again</button>
+        <div class="win-buttons">
+            <button class="explore-btn" onclick="keepExploring()">Keep Exploring</button>
+            <button class="reset-btn" onclick="reset()">Play Again</button>
+        </div>
     </div>
 
     <script>
@@ -976,18 +990,34 @@
 
         // ==================== BARNES-HUT OCTREE ====================
         class OctreeNode {
-            constructor(cx, cy, cz, size) {
+            constructor(cx, cy, cz, size, depth = 0) {
                 this.cx = cx; this.cy = cy; this.cz = cz;
                 this.size = size;
+                this.depth = depth;
                 this.mass = 0;
                 this.comX = 0; this.comY = 0; this.comZ = 0;
                 this.children = null;
-                this.body = null;
+                this.bodies = []; // Store multiple bodies at max depth
             }
 
             insert(node) {
+                // At max depth, just accumulate bodies
+                if (this.depth >= 20) {
+                    this.bodies.push(node);
+                    const totalMass = this.mass + 1;
+                    if (this.mass === 0) {
+                        this.comX = node.x; this.comY = node.y; this.comZ = node.z;
+                    } else {
+                        this.comX = (this.comX * this.mass + node.x) / totalMass;
+                        this.comY = (this.comY * this.mass + node.y) / totalMass;
+                        this.comZ = (this.comZ * this.mass + node.z) / totalMass;
+                    }
+                    this.mass = totalMass;
+                    return;
+                }
+
                 if (this.mass === 0) {
-                    this.body = node;
+                    this.bodies = [node];
                     this.mass = 1;
                     this.comX = node.x; this.comY = node.y; this.comZ = node.z;
                     return;
@@ -995,10 +1025,10 @@
 
                 if (this.children === null) {
                     this.subdivide();
-                    if (this.body) {
-                        this.insertIntoChild(this.body);
-                        this.body = null;
+                    for (const body of this.bodies) {
+                        this.insertIntoChild(body);
                     }
+                    this.bodies = [];
                 }
 
                 this.insertIntoChild(node);
@@ -1018,7 +1048,7 @@
                     const ox = (i & 1) ? qs : -qs;
                     const oy = (i & 2) ? qs : -qs;
                     const oz = (i & 4) ? qs : -qs;
-                    this.children.push(new OctreeNode(this.cx + ox, this.cy + oy, this.cz + oz, hs));
+                    this.children.push(new OctreeNode(this.cx + ox, this.cy + oy, this.cz + oz, hs, this.depth + 1));
                 }
             }
 
@@ -1038,7 +1068,24 @@
 
                 // If far enough away, treat as single body
                 if (this.children === null || (this.size / dist) < theta) {
-                    if (this.body === node) return { fx: 0, fy: 0, fz: 0 };
+                    // Skip self - check if this node is in our bodies list
+                    if (this.bodies.includes(node)) {
+                        // Calculate force from other bodies at this leaf
+                        let fx = 0, fy = 0, fz = 0;
+                        for (const body of this.bodies) {
+                            if (body === node) continue;
+                            const bdx = body.x - node.x;
+                            const bdy = body.y - node.y;
+                            const bdz = body.z - node.z;
+                            const bDistSq = bdx * bdx + bdy * bdy + bdz * bdz || 1;
+                            const bDist = Math.sqrt(bDistSq);
+                            const force = repulsion / bDistSq;
+                            fx -= (bdx / bDist) * force;
+                            fy -= (bdy / bDist) * force;
+                            fz -= (bdz / bDist) * force;
+                        }
+                        return { fx, fy, fz };
+                    }
                     const force = (repulsion * this.mass) / distSq;
                     return {
                         fx: -(dx / dist) * force,
@@ -1507,6 +1554,10 @@
             stopGraphAnimation();
             document.getElementById('winOverlay').classList.remove('show');
             init();
+        }
+
+        function keepExploring() {
+            document.getElementById('winOverlay').classList.remove('show');
         }
 
         // ==================== SIMULATED ANNEALING ====================
