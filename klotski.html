@@ -324,6 +324,16 @@
             transform: none;
         }
 
+        .preview-canvas {
+            position: fixed;
+            pointer-events: none;
+            z-index: 50;
+            display: none;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            opacity: 0.6;
+        }
+
         .win-overlay {
             position: fixed;
             top: 0;
@@ -449,6 +459,8 @@
         </div>
     </div>
 
+    <canvas id="previewCanvas" class="preview-canvas"></canvas>
+
     <div class="win-overlay" id="winOverlay">
         <div class="win-message">You Win!</div>
         <div class="win-stats" id="winStats"></div>
@@ -564,6 +576,91 @@
         // Hover state
         let hoveredNodeHash = null;
 
+        // Preview canvas setup
+        const previewCanvas = document.getElementById('previewCanvas');
+        const previewCtx = previewCanvas.getContext('2d');
+        const PREVIEW_SCALE = 0.25; // Scale factor for preview
+        const PREVIEW_WIDTH = BOARD_WIDTH * CELL_SIZE * PREVIEW_SCALE;
+        const PREVIEW_HEIGHT = BOARD_HEIGHT * CELL_SIZE * PREVIEW_SCALE;
+        previewCanvas.width = PREVIEW_WIDTH;
+        previewCanvas.height = PREVIEW_HEIGHT;
+
+        // Block colors for preview
+        const blockColors = {
+            main: { fill: '#dc2626', stroke: '#ef4444' },
+            vertical: { fill: '#2563eb', stroke: '#3b82f6' },
+            horizontal: { fill: '#7c3aed', stroke: '#8b5cf6' },
+            small: { fill: '#d97706', stroke: '#f59e0b' }
+        };
+
+        // Render a board state to the preview canvas
+        function renderPreview(state) {
+            // Background
+            previewCtx.fillStyle = '#0d0d15';
+            previewCtx.fillRect(0, 0, PREVIEW_WIDTH, PREVIEW_HEIGHT);
+
+            // Draw blocks
+            state.forEach(block => {
+                const x = block.x * CELL_SIZE * PREVIEW_SCALE;
+                const y = block.y * CELL_SIZE * PREVIEW_SCALE;
+                const w = block.width * CELL_SIZE * PREVIEW_SCALE - 2;
+                const h = block.height * CELL_SIZE * PREVIEW_SCALE - 2;
+
+                const colors = blockColors[block.type] || blockColors.small;
+
+                previewCtx.fillStyle = colors.fill;
+                previewCtx.strokeStyle = colors.stroke;
+                previewCtx.lineWidth = 1;
+
+                // Rounded rect
+                const radius = 4;
+                previewCtx.beginPath();
+                previewCtx.moveTo(x + radius, y);
+                previewCtx.lineTo(x + w - radius, y);
+                previewCtx.quadraticCurveTo(x + w, y, x + w, y + radius);
+                previewCtx.lineTo(x + w, y + h - radius);
+                previewCtx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+                previewCtx.lineTo(x + radius, y + h);
+                previewCtx.quadraticCurveTo(x, y + h, x, y + h - radius);
+                previewCtx.lineTo(x, y + radius);
+                previewCtx.quadraticCurveTo(x, y, x + radius, y);
+                previewCtx.closePath();
+                previewCtx.fill();
+                previewCtx.stroke();
+            });
+
+            // Draw exit marker
+            previewCtx.fillStyle = '#4ade80';
+            const exitX = 1 * CELL_SIZE * PREVIEW_SCALE;
+            const exitW = 2 * CELL_SIZE * PREVIEW_SCALE;
+            previewCtx.fillRect(exitX, PREVIEW_HEIGHT - 4, exitW, 4);
+        }
+
+        // Show preview at position
+        function showPreview(x, y, state) {
+            renderPreview(state);
+            // Offset from cursor
+            const offsetX = 15;
+            const offsetY = 15;
+            // Keep preview on screen
+            let posX = x + offsetX;
+            let posY = y + offsetY;
+            if (posX + PREVIEW_WIDTH > window.innerWidth) {
+                posX = x - PREVIEW_WIDTH - offsetX;
+            }
+            if (posY + PREVIEW_HEIGHT > window.innerHeight) {
+                posY = y - PREVIEW_HEIGHT - offsetY;
+            }
+            previewCanvas.style.left = posX + 'px';
+            previewCanvas.style.top = posY + 'px';
+            previewCanvas.style.display = 'block';
+        }
+
+        // Hide preview
+        function hidePreview() {
+            previewCanvas.style.display = 'none';
+        }
+
         // Click handler to navigate to a node
         graphCanvas.addEventListener('click', (e) => {
             if (isDraggingGraph || saRunning) return;
@@ -597,6 +694,7 @@
         graphCanvas.addEventListener('mousemove', (e) => {
             if (isDraggingGraph) {
                 hoveredNodeHash = null;
+                hidePreview();
                 return;
             }
 
@@ -622,10 +720,21 @@
 
             hoveredNodeHash = closestHash;
             graphCanvas.style.cursor = closestHash ? 'pointer' : (isDraggingGraph ? 'grabbing' : 'grab');
+
+            // Show/hide preview
+            if (closestHash) {
+                const node = graphNodes.get(closestHash);
+                if (node && node.state) {
+                    showPreview(e.clientX, e.clientY, node.state);
+                }
+            } else {
+                hidePreview();
+            }
         });
 
         graphCanvas.addEventListener('mouseleave', () => {
             hoveredNodeHash = null;
+            hidePreview();
         });
 
         // BFS to find shortest path between two nodes
