@@ -13,75 +13,65 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            background: #0d0d15;
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
-        }
-
-        .main-container {
-            display: flex;
-            gap: 30px;
-            align-items: flex-start;
-            margin-top: 20px;
-        }
-
-        .game-panel {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .graph-panel {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .graph-container {
-            padding: 15px;
-            background: linear-gradient(145deg, #2d2d44, #1f1f33);
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            margin: 0;
+            overflow: hidden;
         }
 
         .graph-canvas {
-            background: #0d0d15;
-            border-radius: 10px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        .game-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
         }
 
         .graph-stats {
-            margin-top: 10px;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 10;
             display: flex;
             gap: 20px;
             color: #fff;
             font-size: 12px;
+            background: rgba(0,0,0,0.5);
+            padding: 10px 15px;
+            border-radius: 8px;
         }
 
         .graph-stats .stat {
-            padding: 5px 10px;
-        }
-
-        .graph-title {
-            color: #aaa;
-            font-size: 12px;
-            text-transform: uppercase;
-            margin-bottom: 10px;
-            text-align: center;
+            padding: 0 10px;
         }
 
         h1 {
             color: #eee;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
+            font-size: 20px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         }
 
         .info {
             color: #aaa;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             text-align: center;
+            font-size: 12px;
         }
 
         .stats {
@@ -368,100 +358,94 @@
     </style>
 </head>
 <body>
-    <h1>Klotski Puzzle</h1>
-    <p class="info">Move the red block to the bottom exit</p>
+    <canvas id="graphCanvas" class="graph-canvas"></canvas>
 
-    <div class="main-container">
-        <div class="game-panel">
-            <div class="stats">
-                <div class="stat">
-                    <div class="stat-label">MOVES</div>
-                    <div class="stat-value" id="moves">0</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-label">TIME</div>
-                    <div class="stat-value" id="time">0:00</div>
-                </div>
+    <div class="game-panel">
+        <h1>Klotski Puzzle</h1>
+        <p class="info">Move the red block to the bottom exit</p>
+
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label">MOVES</div>
+                <div class="stat-value" id="moves">0</div>
             </div>
-
-            <div class="board-container">
-                <div class="board" id="board">
-                    <div class="exit-marker"></div>
-                </div>
-            </div>
-
-            <div class="controls">
-                <button class="undo-btn" onclick="undo()">Undo</button>
-                <button class="reset-btn" onclick="reset()">Reset</button>
-                <button class="auto-btn" id="autoBtn" onclick="toggleAutoplay()">Autoplay</button>
-            </div>
-
-            <div class="sa-settings">
-                <div class="settings-title">Simulated Annealing Settings</div>
-                <div class="settings-grid">
-                    <div class="setting-item">
-                        <label for="saInitTemp">Initial Temperature</label>
-                        <input type="number" id="saInitTemp" value="1000" min="1" step="100">
-                    </div>
-                    <div class="setting-item">
-                        <label for="saCoolingRate">Cooling Rate</label>
-                        <input type="number" id="saCoolingRate" value="0.9999" min="0.9" max="0.99999" step="0.0001">
-                    </div>
-                    <div class="setting-item">
-                        <label for="saMinTemp">Min Temperature</label>
-                        <input type="number" id="saMinTemp" value="0.01" min="0.0001" step="0.01">
-                    </div>
-                    <div class="setting-item">
-                        <label for="saIterPerFrame">Iterations/Frame</label>
-                        <input type="number" id="saIterPerFrame" value="100" min="1" max="1000" step="10">
-                    </div>
-                </div>
-                <div class="presets">
-                    <button class="preset-btn" onclick="applyPreset('fast')">Fast</button>
-                    <button class="preset-btn" onclick="applyPreset('balanced')">Balanced</button>
-                    <button class="preset-btn" onclick="applyPreset('thorough')">Thorough</button>
-                    <button class="preset-btn" onclick="applyPreset('extreme')">Extreme</button>
-                </div>
-            </div>
-
-            <div class="sa-status" id="saStatus">
-                <div class="label">RUNNING</div>
-                <div class="values">
-                    <div class="value-item">
-                        <div class="value" id="saTemp">-</div>
-                        <div class="label">Temp</div>
-                    </div>
-                    <div class="value-item">
-                        <div class="value" id="saEnergy">-</div>
-                        <div class="label">Energy</div>
-                    </div>
-                    <div class="value-item">
-                        <div class="value" id="saBest">-</div>
-                        <div class="label">Best</div>
-                    </div>
-                    <div class="value-item">
-                        <div class="value" id="saIter">-</div>
-                        <div class="label">Iterations</div>
-                    </div>
-                </div>
+            <div class="stat">
+                <div class="stat-label">TIME</div>
+                <div class="stat-value" id="time">0:00</div>
             </div>
         </div>
 
-        <div class="graph-panel">
-            <div class="graph-container">
-                <div class="graph-title">State Space Exploration</div>
-                <canvas id="graphCanvas" class="graph-canvas" width="500" height="500"></canvas>
-                <div class="graph-stats">
-                    <div class="stat">
-                        <div class="stat-label">NODES</div>
-                        <div class="stat-value" id="graphNodes">0</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-label">EDGES</div>
-                        <div class="stat-value" id="graphEdges">0</div>
-                    </div>
+        <div class="board-container">
+            <div class="board" id="board">
+                <div class="exit-marker"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="undo-btn" onclick="undo()">Undo</button>
+            <button class="reset-btn" onclick="reset()">Reset</button>
+            <button class="auto-btn" id="autoBtn" onclick="toggleAutoplay()">Autoplay</button>
+        </div>
+
+        <div class="sa-settings">
+            <div class="settings-title">Simulated Annealing Settings</div>
+            <div class="settings-grid">
+                <div class="setting-item">
+                    <label for="saInitTemp">Initial Temperature</label>
+                    <input type="number" id="saInitTemp" value="1000" min="1" step="100">
+                </div>
+                <div class="setting-item">
+                    <label for="saCoolingRate">Cooling Rate</label>
+                    <input type="number" id="saCoolingRate" value="0.9999" min="0.9" max="0.99999" step="0.0001">
+                </div>
+                <div class="setting-item">
+                    <label for="saMinTemp">Min Temperature</label>
+                    <input type="number" id="saMinTemp" value="0.01" min="0.0001" step="0.01">
+                </div>
+                <div class="setting-item">
+                    <label for="saIterPerFrame">Iterations/Frame</label>
+                    <input type="number" id="saIterPerFrame" value="100" min="1" max="1000" step="10">
                 </div>
             </div>
+            <div class="presets">
+                <button class="preset-btn" onclick="applyPreset('fast')">Fast</button>
+                <button class="preset-btn" onclick="applyPreset('balanced')">Balanced</button>
+                <button class="preset-btn" onclick="applyPreset('thorough')">Thorough</button>
+                <button class="preset-btn" onclick="applyPreset('extreme')">Extreme</button>
+            </div>
+        </div>
+
+        <div class="sa-status" id="saStatus">
+            <div class="label">RUNNING</div>
+            <div class="values">
+                <div class="value-item">
+                    <div class="value" id="saTemp">-</div>
+                    <div class="label">Temp</div>
+                </div>
+                <div class="value-item">
+                    <div class="value" id="saEnergy">-</div>
+                    <div class="label">Energy</div>
+                </div>
+                <div class="value-item">
+                    <div class="value" id="saBest">-</div>
+                    <div class="label">Best</div>
+                </div>
+                <div class="value-item">
+                    <div class="value" id="saIter">-</div>
+                    <div class="label">Iterations</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="graph-stats">
+        <div class="stat">
+            <div class="stat-label">NODES</div>
+            <div class="stat-value" id="graphNodes">0</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">EDGES</div>
+            <div class="stat-value" id="graphEdges">0</div>
         </div>
     </div>
 
@@ -508,9 +492,19 @@
         // Force-directed 3D graph state
         const graphCanvas = document.getElementById('graphCanvas');
         const graphCtx = graphCanvas.getContext('2d');
-        const GRAPH_WIDTH = 500;
-        const GRAPH_HEIGHT = 500;
-        const GRAPH_DEPTH = 500;
+        let GRAPH_WIDTH = window.innerWidth;
+        let GRAPH_HEIGHT = window.innerHeight;
+        const GRAPH_DEPTH = 800;
+
+        // Set canvas size to window size
+        function resizeCanvas() {
+            GRAPH_WIDTH = window.innerWidth;
+            GRAPH_HEIGHT = window.innerHeight;
+            graphCanvas.width = GRAPH_WIDTH;
+            graphCanvas.height = GRAPH_HEIGHT;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
 
         let graphNodes = new Map(); // stateHash -> { x, y, z, vx, vy, vz, energy }
         let graphEdges = []; // [{ from: hash, to: hash }]
