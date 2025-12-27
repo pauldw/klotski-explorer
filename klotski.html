@@ -818,7 +818,7 @@
 
                 // Mark as visited and update graph
                 const prevHash = currentStateHash;
-                addGraphNode(blocks, true); // This will mark it visited and add neighbors
+                addGraphNode(blocks, true, prevHash); // This will mark it visited and add neighbors
                 currentStateHash = nextHash;
 
                 // Check for win
@@ -895,19 +895,34 @@
         }
 
         // Add a node to the graph (unvisited by default)
-        function addGraphNode(state, visited = false) {
+        function addGraphNode(state, visited = false, nearHash = null) {
             const hash = hashState(state);
             const isNew = !graphNodes.has(hash);
 
             if (isNew) {
-                // Position new nodes randomly in 3D space near center
+                // Position new nodes near the parent node, or at center if no parent
+                let baseX = GRAPH_WIDTH / 2;
+                let baseY = GRAPH_HEIGHT / 2;
+                let baseZ = GRAPH_DEPTH / 2;
+
+                if (nearHash) {
+                    const nearNode = graphNodes.get(nearHash);
+                    if (nearNode) {
+                        baseX = nearNode.x;
+                        baseY = nearNode.y;
+                        baseZ = nearNode.z;
+                    }
+                }
+
+                // Random offset from base position
                 const theta = Math.random() * Math.PI * 2;
                 const phi = Math.random() * Math.PI;
-                const radius = 50 + Math.random() * 100;
+                const radius = 20 + Math.random() * 40;
+
                 graphNodes.set(hash, {
-                    x: GRAPH_WIDTH / 2 + Math.sin(phi) * Math.cos(theta) * radius,
-                    y: GRAPH_HEIGHT / 2 + Math.sin(phi) * Math.sin(theta) * radius,
-                    z: GRAPH_DEPTH / 2 + Math.cos(phi) * radius,
+                    x: baseX + Math.sin(phi) * Math.cos(theta) * radius,
+                    y: baseY + Math.sin(phi) * Math.sin(theta) * radius,
+                    z: baseZ + Math.cos(phi) * radius,
                     vx: 0,
                     vy: 0,
                     vz: 0,
@@ -926,7 +941,7 @@
                 const validMoves = getAllValidMoves(state);
                 for (const move of validMoves) {
                     const neighborState = applyMove(state, move);
-                    const neighborHash = addGraphNode(neighborState, false); // Add as unvisited
+                    const neighborHash = addGraphNode(neighborState, false, hash); // Add as unvisited, near this node
                     addGraphEdge(hash, neighborHash);
                 }
             }
@@ -1446,7 +1461,7 @@
 
                 // Update graph with new state (visited = true)
                 const prevHash = currentStateHash;
-                const newHash = addGraphNode(blocks, true);
+                const newHash = addGraphNode(blocks, true, prevHash);
                 if (prevHash) {
                     addGraphEdge(prevHash, newHash);
                 }
@@ -1677,7 +1692,7 @@
                     if (Math.random() < acceptanceProbability) {
                         // Add the new state to the graph (visited = true)
                         const prevHash = currentStateHash;
-                        const newHash = addGraphNode(newState, true);
+                        const newHash = addGraphNode(newState, true, prevHash);
                         addGraphEdge(prevHash, newHash);
                         currentStateHash = newHash;
 
