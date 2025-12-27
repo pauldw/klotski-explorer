@@ -40,6 +40,7 @@
             padding: 20px;
             border-radius: 15px;
             backdrop-filter: blur(10px);
+            width: 310px;
         }
 
         .graph-stats {
@@ -325,7 +326,7 @@
 
         .sa-settings .settings-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: 1fr;
             gap: 10px;
         }
 
@@ -355,7 +356,7 @@
         }
 
         .sa-settings .setting-item.full-width {
-            grid-column: span 2;
+            grid-column: span 1;
         }
 
         .sa-settings .presets {
@@ -469,8 +470,7 @@
     <canvas id="graphCanvas" class="graph-canvas"></canvas>
 
     <div class="game-panel">
-        <h1>Klotski Puzzle</h1>
-        <p class="info">Move the red block to the bottom exit</p>
+        <h1>Klotski Explorer</h1>
 
         <div class="win-stat" id="winStat">Unsolved</div>
 
