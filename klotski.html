@@ -556,6 +556,129 @@
 
         graphCanvas.style.cursor = 'grab';
 
+        // Path animation state
+        let pathAnimating = false;
+        let pathQueue = [];
+
+        // Click handler to navigate to a node
+        graphCanvas.addEventListener('click', (e) => {
+            if (isDraggingGraph || pathAnimating || saRunning) return;
+
+            const rect = graphCanvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
+            // Find the closest node to the click
+            let closestHash = null;
+            let closestDist = Infinity;
+            const maxClickDist = 20; // Max distance in pixels to register a click
+
+            graphNodes.forEach((node, hash) => {
+                const proj = project3D(node.x, node.y, node.z);
+                const dx = proj.x - clickX;
+                const dy = proj.y - clickY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < closestDist && dist < maxClickDist) {
+                    closestDist = dist;
+                    closestHash = hash;
+                }
+            });
+
+            if (closestHash && closestHash !== currentStateHash) {
+                navigateToNode(closestHash);
+            }
+        });
+
+        // BFS to find shortest path between two nodes
+        function findShortestPath(fromHash, toHash) {
+            if (fromHash === toHash) return [fromHash];
+
+            // Build adjacency list from edges
+            const adjacency = new Map();
+            graphNodes.forEach((_, hash) => adjacency.set(hash, []));
+            for (const edge of graphEdges) {
+                adjacency.get(edge.from).push(edge.to);
+                adjacency.get(edge.to).push(edge.from);
+            }
+
+            // BFS
+            const queue = [fromHash];
+            const visited = new Set([fromHash]);
+            const parent = new Map();
+
+            while (queue.length > 0) {
+                const current = queue.shift();
+
+                if (current === toHash) {
+                    // Reconstruct path
+                    const path = [toHash];
+                    let node = toHash;
+                    while (parent.has(node)) {
+                        node = parent.get(node);
+                        path.unshift(node);
+                    }
+                    return path;
+                }
+
+                for (const neighbor of adjacency.get(current) || []) {
+                    if (!visited.has(neighbor)) {
+                        visited.add(neighbor);
+                        parent.set(neighbor, current);
+                        queue.push(neighbor);
+                    }
+                }
+            }
+
+            return null; // No path found
+        }
+
+        // Navigate to a node by following the shortest path
+        function navigateToNode(targetHash) {
+            const path = findShortestPath(currentStateHash, targetHash);
+            if (!path || path.length < 2) return;
+
+            // Queue up the path (skip the first node, it's the current state)
+            pathQueue = path.slice(1);
+            pathAnimating = true;
+            animatePathStep();
+        }
+
+        // Animate one step along the path
+        function animatePathStep() {
+            if (pathQueue.length === 0) {
+                pathAnimating = false;
+                return;
+            }
+
+            const nextHash = pathQueue.shift();
+            const nextNode = graphNodes.get(nextHash);
+
+            if (nextNode && nextNode.state) {
+                // Update game state
+                blocks = JSON.parse(JSON.stringify(nextNode.state));
+                moves++;
+                updateMoves();
+                render();
+
+                // Mark as visited and update graph
+                const prevHash = currentStateHash;
+                addGraphNode(blocks, true); // This will mark it visited and add neighbors
+                currentStateHash = nextHash;
+
+                // Check for win
+                checkWin();
+
+                // Continue to next step after a short delay
+                if (pathQueue.length > 0 && !document.getElementById('winOverlay').classList.contains('show')) {
+                    setTimeout(animatePathStep, 150);
+                } else {
+                    pathAnimating = false;
+                }
+            } else {
+                pathAnimating = false;
+            }
+        }
+
         // Project 3D point to 2D screen coordinates
         function project3D(x, y, z) {
             // Center the coordinates
@@ -625,7 +748,8 @@
                     vy: 0,
                     vz: 0,
                     energy: calculateEnergy(state),
-                    visited: visited
+                    visited: visited,
+                    state: JSON.parse(JSON.stringify(state)) // Store the actual board state
                 });
             } else if (visited) {
                 // Mark as visited if it was previously unvisited
