@@ -547,10 +547,17 @@
         let lastMouseY = 0;
 
         // Set up mouse controls for rotation
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let wasDragging = false;
+
         graphCanvas.addEventListener('mousedown', (e) => {
             isDraggingGraph = true;
+            wasDragging = false;
             lastMouseX = e.clientX;
             lastMouseY = e.clientY;
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
             graphCanvas.style.cursor = 'grabbing';
         });
 
@@ -564,6 +571,14 @@
             rotationX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, rotationX));
             lastMouseX = e.clientX;
             lastMouseY = e.clientY;
+
+            // Check if we've moved enough to count as a drag
+            const totalDragDist = Math.sqrt(
+                Math.pow(e.clientX - dragStartX, 2) + Math.pow(e.clientY - dragStartY, 2)
+            );
+            if (totalDragDist > 5) {
+                wasDragging = true;
+            }
         });
 
         document.addEventListener('mouseup', () => {
@@ -677,7 +692,7 @@
 
         // Click handler to navigate to a node
         graphCanvas.addEventListener('click', (e) => {
-            if (isDraggingGraph || saRunning) return;
+            if (wasDragging || saRunning) return;
 
             const rect = graphCanvas.getBoundingClientRect();
             const clickX = e.clientX - rect.left;
@@ -751,6 +766,15 @@
         graphCanvas.addEventListener('mouseleave', () => {
             hoveredNodeHash = null;
             hidePreview();
+        });
+
+        // Escape key stops path animation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && pathAnimating) {
+                pathAnimating = false;
+                pathQueue = [];
+                currentPath = [];
+            }
         });
 
         // BFS to find shortest path between two nodes
