@@ -518,14 +518,6 @@
         <p class="info">Move the red block to the bottom exit</p>
 
         <div class="stats">
-            <div class="stat">
-                <div class="stat-label">MOVES</div>
-                <div class="stat-value" id="moves">0</div>
-            </div>
-            <div class="stat">
-                <div class="stat-label">TIME</div>
-                <div class="stat-value" id="time">0:00</div>
-            </div>
             <div class="stat win-stat" id="winStat">
                 <div class="stat-label">SOLVED</div>
                 <div class="stat-value" id="winStatus">✗</div>
@@ -687,9 +679,6 @@
         ];
 
         let blocks = [];
-        let moves = 0;
-        let startTime = null;
-        let timerInterval = null;
         let history = [];
         let dragging = null;
         let dragOffset = { x: 0, y: 0 };
@@ -1082,8 +1071,6 @@
             if (nextNode && nextNode.state) {
                 // Update game state
                 blocks = JSON.parse(JSON.stringify(nextNode.state));
-                moves++;
-                updateMoves();
                 render();
 
                 // Mark as visited and update graph
@@ -1616,33 +1603,12 @@
 
         function init() {
             blocks = JSON.parse(JSON.stringify(initialBlocks));
-            moves = 0;
             history = [];
-            updateMoves();
-            startTimer();
             render();
             clearGraph();
             // Add initial state to graph (visited = true)
             currentStateHash = addGraphNode(blocks, true);
             startGraphAnimation();
-        }
-
-        function startTimer() {
-            if (timerInterval) clearInterval(timerInterval);
-            startTime = Date.now();
-            timerInterval = setInterval(updateTimer, 1000);
-            updateTimer();
-        }
-
-        function updateTimer() {
-            const elapsed = Math.floor((Date.now() - startTime) / 1000);
-            const mins = Math.floor(elapsed / 60);
-            const secs = elapsed % 60;
-            document.getElementById('time').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
-        }
-
-        function updateMoves() {
-            document.getElementById('moves').textContent = moves;
         }
 
         function render() {
@@ -1785,8 +1751,6 @@
                     toX: dragging.x,
                     toY: dragging.y
                 });
-                moves++;
-                updateMoves();
 
                 // Update graph with new state (visited = true)
                 const prevHash = currentStateHash;
@@ -1835,8 +1799,6 @@
             const block = blocks.find(b => b.id === lastMove.id);
             block.x = lastMove.fromX;
             block.y = lastMove.fromY;
-            moves--;
-            updateMoves();
             render();
         }
 
@@ -2101,24 +2063,11 @@
 
                 for (let i = 0; i < iterationsPerFrame; i++) {
                     if (temperature < minTemperature) {
-                        // SA complete - animate path to best state using unified animator
+                        // SA complete - just stop where we are
                         saRunning = false;
                         document.getElementById('saStatus').classList.remove('show');
-
-                        if (bestStateHash && bestStateHash !== currentStateHash) {
-                            // Navigate to best state using the unified path animator
-                            const path = findShortestPath(currentStateHash, bestStateHash);
-                            setPath(path, () => {
-                                checkWin();
-                                document.getElementById('autoBtn').textContent = 'Autoplay';
-                                document.getElementById('autoBtn').classList.remove('running');
-                            });
-                        } else {
-                            // Already at best state
-                            checkWin();
-                            document.getElementById('autoBtn').textContent = 'Autoplay';
-                            document.getElementById('autoBtn').classList.remove('running');
-                        }
+                        document.getElementById('autoBtn').textContent = 'Autoplay';
+                        document.getElementById('autoBtn').classList.remove('running');
                         return;
                     }
 
