@@ -886,13 +886,43 @@
             }
             graphCtx.stroke();
 
-            // Draw current state marker - small subtle yellow dot
+            // Draw nodes colored by energy (lower energy = greener/brighter)
+            // Unvisited nodes are purple (same as unvisited edges)
+            // Energy ranges from 0 (goal) to ~4 (max Manhattan distance)
+            const maxEnergy = 4;
+            graphNodes.forEach((node, hash) => {
+                const proj = projectionCache.get(hash);
+                if (!proj) return;
+
+                if (!node.visited) {
+                    // Unvisited nodes: purple (same as unvisited edges)
+                    graphCtx.fillStyle = 'rgba(160, 120, 255, 0.5)';
+                } else {
+                    // Visited nodes: color by energy
+                    // Normalize energy to 0-1 range (0 = best, 1 = worst)
+                    const normalizedEnergy = Math.min(node.energy / maxEnergy, 1);
+
+                    // Color gradient: green (low energy) -> yellow -> red (high energy)
+                    const r = Math.floor(255 * normalizedEnergy);
+                    const g = Math.floor(255 * (1 - normalizedEnergy * 0.7));
+                    const b = Math.floor(50 * (1 - normalizedEnergy));
+                    const alpha = 0.6 + (1 - normalizedEnergy) * 0.4; // Brighter for lower energy
+
+                    graphCtx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+                }
+
+                graphCtx.beginPath();
+                graphCtx.arc(proj.x, proj.y, 1, 0, Math.PI * 2);
+                graphCtx.fill();
+            });
+
+            // Draw current state marker - small subtle yellow dot on top
             if (currentStateHash) {
                 const proj = projectionCache.get(currentStateHash);
                 if (proj) {
-                    graphCtx.fillStyle = 'rgba(250, 204, 21, 0.8)';
+                    graphCtx.fillStyle = 'rgba(250, 204, 21, 1)';
                     graphCtx.beginPath();
-                    graphCtx.arc(proj.x, proj.y, 3, 0, Math.PI * 2);
+                    graphCtx.arc(proj.x, proj.y, 4, 0, Math.PI * 2);
                     graphCtx.fill();
                 }
             }
