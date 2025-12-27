@@ -367,7 +367,7 @@
             outline: 2px solid #f97316;
         }
 
-        .bfs-settings {
+        .animation-settings {
             margin-top: 15px;
             padding: 15px 20px;
             background: rgba(255,255,255,0.1);
@@ -376,7 +376,7 @@
             font-size: 14px;
         }
 
-        .bfs-settings .settings-title {
+        .animation-settings .settings-title {
             color: #aaa;
             font-size: 12px;
             text-transform: uppercase;
@@ -384,24 +384,24 @@
             text-align: center;
         }
 
-        .bfs-settings .settings-grid {
+        .animation-settings .settings-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 10px;
         }
 
-        .bfs-settings .setting-item {
+        .animation-settings .setting-item {
             display: flex;
             flex-direction: column;
             gap: 4px;
         }
 
-        .bfs-settings label {
+        .animation-settings label {
             font-size: 11px;
             color: #aaa;
         }
 
-        .bfs-settings input {
+        .animation-settings input {
             padding: 8px 10px;
             border: none;
             border-radius: 6px;
@@ -411,63 +411,11 @@
             width: 100%;
         }
 
-        .bfs-settings input:focus {
-            outline: 2px solid #22c55e;
+        .animation-settings input:focus {
+            outline: 2px solid #facc15;
         }
 
-        .bfs-settings .setting-item.full-width {
-            grid-column: span 2;
-        }
-
-        .dfs-settings {
-            margin-top: 15px;
-            padding: 15px 20px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 8px;
-            color: #fff;
-            font-size: 14px;
-        }
-
-        .dfs-settings .settings-title {
-            color: #aaa;
-            font-size: 12px;
-            text-transform: uppercase;
-            margin-bottom: 10px;
-            text-align: center;
-        }
-
-        .dfs-settings .settings-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-        }
-
-        .dfs-settings .setting-item {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .dfs-settings label {
-            font-size: 11px;
-            color: #aaa;
-        }
-
-        .dfs-settings input {
-            padding: 8px 10px;
-            border: none;
-            border-radius: 6px;
-            background: rgba(0,0,0,0.3);
-            color: #fff;
-            font-size: 14px;
-            width: 100%;
-        }
-
-        .dfs-settings input:focus {
-            outline: 2px solid #a855f7;
-        }
-
-        .dfs-settings .setting-item.full-width {
+        .animation-settings .setting-item.full-width {
             grid-column: span 2;
         }
 
@@ -689,12 +637,12 @@
             </div>
         </div>
 
-        <div class="bfs-settings" id="bfsSettings" style="display: none;">
-            <div class="settings-title">BFS Settings</div>
+        <div class="animation-settings" id="animationSettings">
+            <div class="settings-title">Animation Settings</div>
             <div class="settings-grid">
                 <div class="setting-item full-width">
-                    <label for="bfsStepDelay">Step Delay (ms)</label>
-                    <input type="number" id="bfsStepDelay" value="1" min="0" max="1000" step="1">
+                    <label for="stepDelay">Step Delay (ms)</label>
+                    <input type="number" id="stepDelay" value="50" min="0" max="1000" step="1">
                 </div>
             </div>
         </div>
@@ -717,15 +665,6 @@
             </div>
         </div>
 
-        <div class="dfs-settings" id="dfsSettings" style="display: none;">
-            <div class="settings-title">DFS Settings</div>
-            <div class="settings-grid">
-                <div class="setting-item full-width">
-                    <label for="dfsStepDelay">Step Delay (ms)</label>
-                    <input type="number" id="dfsStepDelay" value="1" min="0" max="1000" step="1">
-                </div>
-            </div>
-        </div>
 
         <div class="dfs-status" id="dfsStatus">
             <div class="label">DFS RUNNING</div>
@@ -1080,6 +1019,7 @@
                 pathAnimating = false;
                 pathQueue = [];
                 currentPath = [];
+                onPathAnimationComplete = null;
             }
         });
 
@@ -1126,29 +1066,53 @@
             return null; // No path found
         }
 
-        // Navigate to a node by following the shortest path
-        function navigateToNode(targetHash) {
-            const path = findShortestPath(currentStateHash, targetHash);
-            if (!path || path.length < 2) return;
+        // Callback for when path animation completes
+        let onPathAnimationComplete = null;
+
+        // Get the global step delay from settings
+        function getStepDelay() {
+            return parseInt(document.getElementById('stepDelay').value) || 50;
+        }
+
+        // Set a path to animate - this is the unified animation entry point
+        // All movement (click-to-move, BFS, DFS, SA) should use this function
+        function setPath(path, onComplete = null) {
+            if (!path || path.length < 2) {
+                if (onComplete) onComplete();
+                return;
+            }
 
             // Store full path for highlighting
             currentPath = path;
             // Queue up the path (skip the first node, it's the current state)
             pathQueue = path.slice(1);
+            // Store completion callback
+            onPathAnimationComplete = onComplete;
 
             // If not already animating, start the animation
             if (!pathAnimating) {
                 pathAnimating = true;
                 animatePathStep();
             }
-            // If already animating, the new path will be picked up automatically
         }
 
-        // Animate one step along the path
+        // Navigate to a node by following the shortest path (convenience wrapper)
+        function navigateToNode(targetHash, onComplete = null) {
+            const path = findShortestPath(currentStateHash, targetHash);
+            setPath(path, onComplete);
+        }
+
+        // Animate one step along the path (unified animator)
         function animatePathStep() {
             if (pathQueue.length === 0) {
                 pathAnimating = false;
                 currentPath = []; // Clear path highlighting
+                // Call completion callback if set
+                if (onPathAnimationComplete) {
+                    const callback = onPathAnimationComplete;
+                    onPathAnimationComplete = null;
+                    callback();
+                }
                 return;
             }
 
@@ -1168,18 +1132,30 @@
                 currentStateHash = nextHash;
 
                 // Check for win
-                checkWin();
+                const won = checkWin();
 
-                // Continue to next step after a short delay
+                // Continue to next step after delay, unless we won
                 if (pathQueue.length > 0 && !document.getElementById('winOverlay').classList.contains('show')) {
-                    setTimeout(animatePathStep, 50);
+                    setTimeout(animatePathStep, getStepDelay());
                 } else {
                     pathAnimating = false;
                     currentPath = [];
+                    // Call completion callback if set
+                    if (onPathAnimationComplete) {
+                        const callback = onPathAnimationComplete;
+                        onPathAnimationComplete = null;
+                        callback();
+                    }
                 }
             } else {
                 pathAnimating = false;
                 currentPath = [];
+                // Call completion callback if set
+                if (onPathAnimationComplete) {
+                    const callback = onPathAnimationComplete;
+                    onPathAnimationComplete = null;
+                    callback();
+                }
             }
         }
 
@@ -1911,20 +1887,8 @@
         function onAutoplayTypeChange() {
             autoplayType = document.getElementById('autoplayType').value;
             const saSettings = document.getElementById('saSettings');
-            const bfsSettings = document.getElementById('bfsSettings');
-            const dfsSettings = document.getElementById('dfsSettings');
 
-            saSettings.style.display = 'none';
-            bfsSettings.style.display = 'none';
-            dfsSettings.style.display = 'none';
-
-            if (autoplayType === 'sa') {
-                saSettings.style.display = 'block';
-            } else if (autoplayType === 'bfs') {
-                bfsSettings.style.display = 'block';
-            } else if (autoplayType === 'dfs') {
-                dfsSettings.style.display = 'block';
-            }
+            saSettings.style.display = autoplayType === 'sa' ? 'block' : 'none';
         }
 
         function isAutoplayRunning() {
@@ -2022,6 +1986,12 @@
         }
 
         function stopAutoplay() {
+            // Stop path animation
+            pathAnimating = false;
+            pathQueue = [];
+            currentPath = [];
+            onPathAnimationComplete = null;
+
             // Stop SA
             saRunning = false;
             if (saAnimationId) {
@@ -2155,25 +2125,39 @@
             let currentState = JSON.parse(JSON.stringify(blocks));
             let currentEnergy = calculateEnergy(currentState);
             let iteration = 0;
+            let bestStateHash = null;
 
             // Ensure current state is tracked in graph (visited = true)
             currentStateHash = addGraphNode(currentState, true);
+            bestStateHash = currentStateHash;
 
             function step() {
                 if (!saRunning) return;
 
                 for (let i = 0; i < iterationsPerFrame; i++) {
                     if (temperature < minTemperature || currentEnergy === 0) {
-                        // Apply best state found
-                        blocks = JSON.parse(JSON.stringify(bestState));
-                        render();
+                        // SA complete - animate path to best state using unified animator
+                        saRunning = false;
+                        document.getElementById('saStatus').classList.remove('show');
 
-                        if (bestEnergy === 0) {
-                            moves++;
-                            updateMoves();
-                            checkWin();
+                        if (bestStateHash && bestStateHash !== currentStateHash) {
+                            // Navigate to best state using the unified path animator
+                            const path = findShortestPath(currentStateHash, bestStateHash);
+                            setPath(path, () => {
+                                if (bestEnergy === 0) {
+                                    checkWin();
+                                }
+                                document.getElementById('autoBtn').textContent = 'Autoplay';
+                                document.getElementById('autoBtn').classList.remove('running');
+                            });
+                        } else {
+                            // Already at best state
+                            if (bestEnergy === 0) {
+                                checkWin();
+                            }
+                            document.getElementById('autoBtn').textContent = 'Autoplay';
+                            document.getElementById('autoBtn').classList.remove('running');
                         }
-                        stopAutoplay();
                         return;
                     }
 
@@ -2208,6 +2192,7 @@
                         if (currentEnergy < bestEnergy) {
                             bestEnergy = currentEnergy;
                             bestState = JSON.parse(JSON.stringify(currentState));
+                            bestStateHash = newHash;
                         }
                     }
 
@@ -2225,12 +2210,13 @@
                 document.getElementById('saBest').textContent = bestEnergy;
                 document.getElementById('saIter').textContent = iteration;
 
-                // Check for win during animation
+                // Check for win during exploration
                 if (currentEnergy === 0) {
-                    moves++;
-                    updateMoves();
+                    saRunning = false;
+                    document.getElementById('saStatus').classList.remove('show');
                     checkWin();
-                    stopAutoplay();
+                    document.getElementById('autoBtn').textContent = 'Autoplay';
+                    document.getElementById('autoBtn').classList.remove('running');
                     return;
                 }
 
@@ -2242,11 +2228,7 @@
 
         // ==================== BFS (Breadth-First Search) ====================
 
-        let bfsOnAnimationComplete = null; // Callback when path animation completes
-
         function runBFS() {
-            const stepDelay = parseInt(document.getElementById('bfsStepDelay').value) || 50;
-
             function processNextNode() {
                 if (!bfsRunning) return;
 
@@ -2280,12 +2262,12 @@
                     // Still process this node's neighbors
                     exploreNode(targetHash, targetNode);
                     updateBFSStatus();
-                    bfsAnimationId = setTimeout(processNextNode, stepDelay);
+                    bfsAnimationId = setTimeout(processNextNode, getStepDelay());
                     return;
                 }
 
-                // Set up callback for when animation completes
-                bfsOnAnimationComplete = () => {
+                // Use unified path animator with callback
+                setPath(path, () => {
                     if (!bfsRunning) return;
 
                     // Now explore this node's neighbors
@@ -2298,81 +2280,11 @@
                     }
 
                     // Continue to next node
-                    bfsAnimationId = setTimeout(processNextNode, stepDelay);
-                };
-
-                // Start animating path to target
-                currentPath = path;
-                pathQueue = path.slice(1);
-                pathAnimating = true;
-                animateBFSPathStep();
+                    bfsAnimationId = setTimeout(processNextNode, getStepDelay());
+                });
             }
 
             processNextNode();
-        }
-
-        function animateBFSPathStep() {
-            if (!bfsRunning) {
-                pathAnimating = false;
-                currentPath = [];
-                bfsOnAnimationComplete = null;
-                return;
-            }
-
-            if (pathQueue.length === 0) {
-                pathAnimating = false;
-                currentPath = [];
-                // Call the completion callback
-                if (bfsOnAnimationComplete) {
-                    const callback = bfsOnAnimationComplete;
-                    bfsOnAnimationComplete = null;
-                    callback();
-                }
-                return;
-            }
-
-            const nextHash = pathQueue.shift();
-            const nextNode = graphNodes.get(nextHash);
-
-            if (nextNode && nextNode.state) {
-                // Update game state
-                blocks = JSON.parse(JSON.stringify(nextNode.state));
-                moves++;
-                updateMoves();
-                render();
-
-                // Mark as visited and update graph
-                const prevHash = currentStateHash;
-                addGraphNode(blocks, true, prevHash);
-                currentStateHash = nextHash;
-
-                // Update visited count if this was unvisited
-                if (!nextNode.visited) {
-                    nextNode.visited = true;
-                    bfsVisitedCount++;
-                }
-
-                // Check for win
-                if (calculateEnergy(blocks) === 0) {
-                    bfsBestEnergy = 0;
-                    bfsBestState = JSON.parse(JSON.stringify(blocks));
-                    checkWin();
-                    stopAutoplay();
-                    return;
-                }
-
-                // Continue to next step after delay
-                const stepDelay = parseInt(document.getElementById('bfsStepDelay').value) || 50;
-                setTimeout(animateBFSPathStep, stepDelay);
-            } else {
-                pathAnimating = false;
-                currentPath = [];
-                if (bfsOnAnimationComplete) {
-                    const callback = bfsOnAnimationComplete;
-                    bfsOnAnimationComplete = null;
-                    callback();
-                }
-            }
         }
 
         function exploreNode(nodeHash, node) {
@@ -2438,8 +2350,6 @@
 
         // ==================== DFS (Depth-First Search) ====================
 
-        let dfsOnAnimationComplete = null; // Callback when path animation completes
-
         function startDFS() {
             dfsRunning = true;
 
@@ -2499,8 +2409,6 @@
         }
 
         function runDFS() {
-            const stepDelay = parseInt(document.getElementById('dfsStepDelay').value) || 1;
-
             function processNextNode() {
                 if (!dfsRunning) return;
 
@@ -2534,12 +2442,12 @@
                     // Still process this node's neighbors
                     exploreDFSNode(targetHash, targetNode);
                     updateDFSStatus();
-                    dfsAnimationId = setTimeout(processNextNode, stepDelay);
+                    dfsAnimationId = setTimeout(processNextNode, getStepDelay());
                     return;
                 }
 
-                // Set up callback for when animation completes
-                dfsOnAnimationComplete = () => {
+                // Use unified path animator with callback
+                setPath(path, () => {
                     if (!dfsRunning) return;
 
                     // Now explore this node's neighbors
@@ -2552,81 +2460,11 @@
                     }
 
                     // Continue to next node
-                    dfsAnimationId = setTimeout(processNextNode, stepDelay);
-                };
-
-                // Start animating path to target
-                currentPath = path;
-                pathQueue = path.slice(1);
-                pathAnimating = true;
-                animateDFSPathStep();
+                    dfsAnimationId = setTimeout(processNextNode, getStepDelay());
+                });
             }
 
             processNextNode();
-        }
-
-        function animateDFSPathStep() {
-            if (!dfsRunning) {
-                pathAnimating = false;
-                currentPath = [];
-                dfsOnAnimationComplete = null;
-                return;
-            }
-
-            if (pathQueue.length === 0) {
-                pathAnimating = false;
-                currentPath = [];
-                // Call the completion callback
-                if (dfsOnAnimationComplete) {
-                    const callback = dfsOnAnimationComplete;
-                    dfsOnAnimationComplete = null;
-                    callback();
-                }
-                return;
-            }
-
-            const nextHash = pathQueue.shift();
-            const nextNode = graphNodes.get(nextHash);
-
-            if (nextNode && nextNode.state) {
-                // Update game state
-                blocks = JSON.parse(JSON.stringify(nextNode.state));
-                moves++;
-                updateMoves();
-                render();
-
-                // Mark as visited and update graph
-                const prevHash = currentStateHash;
-                addGraphNode(blocks, true, prevHash);
-                currentStateHash = nextHash;
-
-                // Update visited count if this was unvisited
-                if (!nextNode.visited) {
-                    nextNode.visited = true;
-                    dfsVisitedCount++;
-                }
-
-                // Check for win
-                if (calculateEnergy(blocks) === 0) {
-                    dfsBestEnergy = 0;
-                    dfsBestState = JSON.parse(JSON.stringify(blocks));
-                    checkWin();
-                    stopAutoplay();
-                    return;
-                }
-
-                // Continue to next step after delay
-                const stepDelay = parseInt(document.getElementById('dfsStepDelay').value) || 1;
-                setTimeout(animateDFSPathStep, stepDelay);
-            } else {
-                pathAnimating = false;
-                currentPath = [];
-                if (dfsOnAnimationComplete) {
-                    const callback = dfsOnAnimationComplete;
-                    dfsOnAnimationComplete = null;
-                    callback();
-                }
-            }
         }
 
         function exploreDFSNode(nodeHash, node) {
