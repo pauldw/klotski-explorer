@@ -434,6 +434,42 @@
             color: #a855f7;
         }
 
+        .astar-status {
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            text-align: center;
+            display: none;
+        }
+
+        .astar-status.show {
+            display: block;
+        }
+
+        .astar-status .label {
+            color: #aaa;
+            font-size: 12px;
+        }
+
+        .astar-status .values {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 5px;
+        }
+
+        .astar-status .value-item {
+            text-align: center;
+        }
+
+        .astar-status .value {
+            font-weight: bold;
+            color: #06b6d4;
+        }
+
         .bfs-status {
             margin-top: 15px;
             padding: 10px 20px;
@@ -505,6 +541,7 @@
                     <div class="auto-btn-option" onclick="selectAutoplayType('sa')">Simulated Annealing</div>
                     <div class="auto-btn-option" onclick="selectAutoplayType('bfs')">Breadth-First Search</div>
                     <div class="auto-btn-option" onclick="selectAutoplayType('dfs')">Depth-First Search</div>
+                    <div class="auto-btn-option" onclick="selectAutoplayType('astar')">A* Search</div>
                 </div>
             </div>
         </div>
@@ -595,6 +632,24 @@
                 </div>
             </div>
         </div>
+
+        <div class="astar-status" id="astarStatus">
+            <div class="label">A* RUNNING</div>
+            <div class="values">
+                <div class="value-item">
+                    <div class="value" id="astarOpenSize">-</div>
+                    <div class="label">Open</div>
+                </div>
+                <div class="value-item">
+                    <div class="value" id="astarVisited">-</div>
+                    <div class="label">Visited</div>
+                </div>
+                <div class="value-item">
+                    <div class="value" id="astarBestF">-</div>
+                    <div class="label">Best f(n)</div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="graph-stats">
@@ -657,8 +712,16 @@
         let dfsBestEnergy = Infinity;
         let dfsBestState = null;
 
+        // A* state
+        let astarRunning = false;
+        let astarAnimationId = null;
+        let astarOpenSet = []; // Priority queue: [{hash, f, g}]
+        let astarGScores = new Map(); // hash -> g score (cost from start)
+        let astarVisitedCount = 0;
+        let astarBestF = Infinity;
+
         // Current autoplay type
-        let autoplayType = 'sa'; // 'sa' or 'bfs'
+        let autoplayType = 'sa'; // 'sa', 'bfs', 'dfs', or 'astar'
 
         // Force-directed 3D graph state
         const graphCanvas = document.getElementById('graphCanvas');
@@ -1813,7 +1876,8 @@
         const autoplayNames = {
             sa: 'Simulated Annealing',
             bfs: 'Breadth-First Search',
-            dfs: 'Depth-First Search'
+            dfs: 'Depth-First Search',
+            astar: 'A* Search'
         };
 
         function getAutoplayButtonText() {
@@ -1845,7 +1909,7 @@
         });
 
         function isAutoplayRunning() {
-            return saRunning || bfsRunning || dfsRunning;
+            return saRunning || bfsRunning || dfsRunning || astarRunning;
         }
 
         function toggleAutoplay() {
@@ -1869,6 +1933,8 @@
                 startBFS();
             } else if (autoplayType === 'dfs') {
                 startDFS();
+            } else if (autoplayType === 'astar') {
+                startAStar();
             }
         }
 
@@ -1968,6 +2034,14 @@
                 dfsAnimationId = null;
             }
             document.getElementById('dfsStatus').classList.remove('show');
+
+            // Stop A*
+            astarRunning = false;
+            if (astarAnimationId) {
+                cancelAnimationFrame(astarAnimationId);
+                astarAnimationId = null;
+            }
+            document.getElementById('astarStatus').classList.remove('show');
 
             document.getElementById('autoBtn').textContent = getAutoplayButtonText();
             document.getElementById('autoBtnContainer').classList.remove('running');
@@ -2411,6 +2485,151 @@
             document.getElementById('dfsStackSize').textContent = dfsStack.length;
             document.getElementById('dfsVisited').textContent = dfsVisitedCount;
             document.getElementById('dfsBestEnergy').textContent = dfsBestEnergy;
+        }
+
+        // ==================== A* Search ====================
+
+        function startAStar() {
+            astarRunning = true;
+
+            // Initialize A* data structures
+            astarOpenSet = [];
+            astarGScores = new Map();
+            astarVisitedCount = 0;
+            astarBestF = Infinity;
+
+            // Get the current state hash and initialize
+            const startHash = currentStateHash;
+            const startEnergy = calculateEnergy(blocks);
+
+            // g(start) = 0, f(start) = h(start)
+            astarGScores.set(startHash, 0);
+            astarOpenSet.push({
+                hash: startHash,
+                f: startEnergy, // f = g + h, where g=0 at start
+                g: 0
+            });
+            astarBestF = startEnergy;
+
+            document.getElementById('astarStatus').classList.add('show');
+            runAStar();
+        }
+
+        function runAStar() {
+            const nodesPerFrame = 100;
+
+            function step() {
+                if (!astarRunning) return;
+
+                for (let i = 0; i < nodesPerFrame; i++) {
+                    if (astarOpenSet.length === 0) {
+                        // A* complete - no more nodes to explore
+                        stopAutoplay();
+                        return;
+                    }
+
+                    // Find node with lowest f score (simple linear search)
+                    let bestIdx = 0;
+                    for (let j = 1; j < astarOpenSet.length; j++) {
+                        if (astarOpenSet[j].f < astarOpenSet[bestIdx].f) {
+                            bestIdx = j;
+                        }
+                    }
+
+                    // Remove best node from open set
+                    const current = astarOpenSet.splice(bestIdx, 1)[0];
+                    const currentHash = current.hash;
+                    const currentG = current.g;
+
+                    const currentNode = graphNodes.get(currentHash);
+                    if (!currentNode || !currentNode.state) {
+                        continue;
+                    }
+
+                    // Skip if we've already found a better path to this node
+                    if (astarGScores.has(currentHash) && currentG > astarGScores.get(currentHash)) {
+                        continue;
+                    }
+
+                    // Update current state
+                    blocks = JSON.parse(JSON.stringify(currentNode.state));
+                    currentStateHash = currentHash;
+
+                    // Mark as visited
+                    if (!currentNode.visited) {
+                        currentNode.visited = true;
+                        astarVisitedCount++;
+                    }
+
+                    // Check if we found the goal
+                    const currentEnergy = calculateEnergy(currentNode.state);
+                    if (currentEnergy === 0) {
+                        checkWin();
+                        // Don't stop - continue exploring like other algorithms
+                    }
+
+                    // Update best f score for display
+                    if (current.f < astarBestF) {
+                        astarBestF = current.f;
+                    }
+
+                    // Explore neighbors
+                    exploreAStarNode(currentHash, currentNode, currentG);
+                }
+
+                // Update display once per frame
+                render();
+                updateAStarStatus();
+
+                astarAnimationId = requestAnimationFrame(step);
+            }
+
+            step();
+        }
+
+        function exploreAStarNode(nodeHash, node, currentG) {
+            const validMoves = getAllValidMoves(node.state);
+
+            for (const move of validMoves) {
+                const newState = applyMove(node.state, move);
+                const newHash = hashState(newState);
+
+                // Cost to reach neighbor (each move costs 1)
+                const tentativeG = currentG + 1;
+
+                // Check if this is a new state or a better path
+                const existingG = astarGScores.get(newHash);
+                if (existingG === undefined || tentativeG < existingG) {
+                    // This is a better path
+                    astarGScores.set(newHash, tentativeG);
+
+                    // Add node to graph if new
+                    if (!graphNodes.has(newHash)) {
+                        addGraphNode(newState, false, nodeHash);
+                    }
+                    addGraphEdge(nodeHash, newHash);
+
+                    // Calculate f = g + h
+                    const h = calculateEnergy(newState);
+                    const f = tentativeG + h;
+
+                    // Add to open set
+                    astarOpenSet.push({
+                        hash: newHash,
+                        f: f,
+                        g: tentativeG
+                    });
+                } else {
+                    // Just ensure edge exists
+                    addGraphEdge(nodeHash, newHash);
+                }
+            }
+        }
+
+        function updateAStarStatus() {
+            document.getElementById('astarOpenSize').textContent = astarOpenSet.length;
+            document.getElementById('astarVisited').textContent = astarVisitedCount;
+            document.getElementById('astarBestF').textContent = astarBestF;
         }
 
         init();
