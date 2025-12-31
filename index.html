@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Klotski Puzzle</title>
+    <title>Klotski Explorer</title>
     <style>
         * {
             margin: 0;
@@ -40,7 +40,11 @@
             padding: 20px;
             border-radius: 15px;
             backdrop-filter: blur(10px);
-            width: 310px;
+            width: 320px;
+            max-width: calc(100vw - 40px);
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            box-sizing: border-box;
         }
 
         .graph-stats {
@@ -79,12 +83,13 @@
             width: 100%;
             padding: 12px 20px;
             border-radius: 8px;
-            margin-bottom: 20px;
+            margin-top: 20px;
             text-align: center;
             font-size: 18px;
             font-weight: bold;
             color: #fff;
             background: rgba(127, 29, 29, 0.6);
+            box-sizing: border-box;
         }
 
         .win-stat.solved {
@@ -180,7 +185,9 @@
         .controls {
             margin-top: 20px;
             display: flex;
+            flex-direction: column;
             gap: 10px;
+            width: 100%;
         }
 
         button {
@@ -206,9 +213,16 @@
             box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
         }
 
+        .start-btn {
+            background: linear-gradient(145deg, #6366f1, #4f46e5);
+            color: white;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+        }
+
         .auto-btn-container {
             position: relative;
             display: flex;
+            width: 100%;
         }
 
         .auto-btn {
@@ -216,6 +230,7 @@
             color: white;
             box-shadow: 0 4px 15px rgba(249, 115, 22, 0.4);
             border-radius: 8px 0 0 8px;
+            flex: 1;
         }
 
         .auto-btn-dropdown {
@@ -472,16 +487,17 @@
     <div class="game-panel">
         <h1>Klotski Explorer</h1>
 
-        <div class="win-stat" id="winStat">Unsolved</div>
-
         <div class="board-container">
             <div class="board" id="board">
                 <div class="exit-marker"></div>
             </div>
         </div>
 
+        <div class="win-stat" id="winStat">Unsolved</div>
+
         <div class="controls">
             <button class="reset-btn" onclick="reset()">Reset</button>
+            <button class="start-btn" onclick="goToStart()">Go to Start</button>
             <div class="auto-btn-container" id="autoBtnContainer">
                 <button class="auto-btn" id="autoBtn" onclick="toggleAutoplay()">Simulated Annealing</button>
                 <button class="auto-btn-dropdown" id="autoBtnDropdown" onclick="toggleAutoplayMenu(event)">▼</button>
@@ -665,6 +681,7 @@
         let graphEdges = []; // [{ from: hash, to: hash }]
         let edgeSet = new Set(); // For quick duplicate checking
         let currentStateHash = null;
+        let initialStateHash = null;
         let graphAnimationId = null;
 
         // 3D rotation angles and zoom (controlled by mouse)
@@ -1585,6 +1602,7 @@
             clearGraph();
             // Add initial state to graph (visited = true)
             currentStateHash = addGraphNode(blocks, true);
+            initialStateHash = currentStateHash;
             startGraphAnimation();
         }
 
@@ -1782,6 +1800,12 @@
             stopGraphAnimation();
             resetWinStatus();
             init();
+        }
+
+        function goToStart() {
+            if (!initialStateHash || pathAnimating || isAutoplayRunning()) return;
+            if (currentStateHash === initialStateHash) return; // Already at start
+            navigateToNode(initialStateHash);
         }
 
         // ==================== AUTOPLAY ====================
