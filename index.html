@@ -732,6 +732,7 @@
         let bfsRunning = false;
         let bfsAnimationId = null;
         let bfsQueue = []; // Queue of state hashes to visit
+        let bfsVisitedSet = new Set(); // Track visited nodes for this BFS run
         let bfsVisitedCount = 0;
         let bfsBestEnergy = Infinity;
         let bfsBestState = null;
@@ -740,6 +741,7 @@
         let dfsRunning = false;
         let dfsAnimationId = null;
         let dfsStack = []; // Stack of state hashes to visit
+        let dfsVisitedSet = new Set(); // Track visited nodes for this DFS run
         let dfsVisitedCount = 0;
         let dfsBestEnergy = Infinity;
         let dfsBestState = null;
@@ -1992,56 +1994,15 @@
         function startBFS() {
             bfsRunning = true;
 
-            // Seed queue with all unvisited nodes that have visited neighbors
-            // This allows BFS to resume from where it left off
-            bfsQueue = [];
+            // Start fresh from current node
+            bfsQueue = [currentStateHash];
             bfsVisitedCount = 0;
-            bfsBestEnergy = Infinity;
-            bfsBestState = null;
+            bfsBestEnergy = calculateEnergy(blocks);
+            bfsBestState = JSON.parse(JSON.stringify(blocks));
 
-            // Count visited nodes and find unvisited frontier
-            const unvisitedWithVisitedNeighbor = new Set();
-
-            for (const [hash, node] of graphNodes) {
-                if (node.visited) {
-                    bfsVisitedCount++;
-                    // Check energy for best state tracking
-                    if (node.state) {
-                        const energy = calculateEnergy(node.state);
-                        if (energy < bfsBestEnergy) {
-                            bfsBestEnergy = energy;
-                            bfsBestState = JSON.parse(JSON.stringify(node.state));
-                        }
-                    }
-                }
-            }
-
-            // Find unvisited nodes that are adjacent to visited nodes
-            for (const edge of graphEdges) {
-                const fromNode = graphNodes.get(edge.from);
-                const toNode = graphNodes.get(edge.to);
-
-                if (fromNode && toNode) {
-                    if (fromNode.visited && !toNode.visited) {
-                        unvisitedWithVisitedNeighbor.add(edge.to);
-                    }
-                    if (toNode.visited && !fromNode.visited) {
-                        unvisitedWithVisitedNeighbor.add(edge.from);
-                    }
-                }
-            }
-
-            bfsQueue = Array.from(unvisitedWithVisitedNeighbor);
-
-            // If no frontier found, start fresh from current state
-            if (bfsQueue.length === 0) {
-                bfsQueue = [currentStateHash];
-                if (bfsVisitedCount === 0) {
-                    bfsVisitedCount = 1;
-                }
-                bfsBestEnergy = calculateEnergy(blocks);
-                bfsBestState = JSON.parse(JSON.stringify(blocks));
-            }
+            // Reset visited state for BFS-specific tracking
+            // We use a separate visited set so we don't affect the graph visualization
+            bfsVisitedSet = new Set();
 
             document.getElementById('bfsStatus').classList.add('show');
             runBFS();
@@ -2335,10 +2296,12 @@
         }
 
         function exploreNode(nodeHash, node) {
-            // Mark this node as visited
-            if (!node.visited) {
-                node.visited = true;
+            // Mark this node as visited for this BFS run
+            if (!bfsVisitedSet.has(nodeHash)) {
+                bfsVisitedSet.add(nodeHash);
                 bfsVisitedCount++;
+                // Also mark in graph for visualization
+                node.visited = true;
             }
 
             // Get all valid moves from this state
@@ -2348,14 +2311,16 @@
                 const newState = applyMove(node.state, move);
                 const newHash = hashState(newState);
 
-                // Check if this is a new state
+                // Check if this is a new state in the graph
                 if (!graphNodes.has(newHash)) {
                     // Add node (unvisited)
                     addGraphNode(newState, false, nodeHash);
                     addGraphEdge(nodeHash, newHash);
 
-                    // Add to queue for future exploration
-                    bfsQueue.push(newHash);
+                    // Add to queue for future exploration (if not visited in this BFS run)
+                    if (!bfsVisitedSet.has(newHash)) {
+                        bfsQueue.push(newHash);
+                    }
 
                     // Check if this is a better solution
                     const energy = calculateEnergy(newState);
@@ -2372,9 +2337,8 @@
                     // Just add edge if it doesn't exist
                     addGraphEdge(nodeHash, newHash);
 
-                    // Add to queue if not yet visited
-                    const existingNode = graphNodes.get(newHash);
-                    if (!existingNode.visited && !bfsQueue.includes(newHash)) {
+                    // Add to queue if not yet visited in this BFS run
+                    if (!bfsVisitedSet.has(newHash) && !bfsQueue.includes(newHash)) {
                         bfsQueue.push(newHash);
                     }
                 }
@@ -2392,56 +2356,15 @@
         function startDFS() {
             dfsRunning = true;
 
-            // Seed stack with all unvisited nodes that have visited neighbors
-            // This allows DFS to resume from where it left off
-            dfsStack = [];
+            // Start fresh from current node
+            dfsStack = [currentStateHash];
             dfsVisitedCount = 0;
-            dfsBestEnergy = Infinity;
-            dfsBestState = null;
+            dfsBestEnergy = calculateEnergy(blocks);
+            dfsBestState = JSON.parse(JSON.stringify(blocks));
 
-            // Count visited nodes and find unvisited frontier
-            const unvisitedWithVisitedNeighbor = new Set();
-
-            for (const [hash, node] of graphNodes) {
-                if (node.visited) {
-                    dfsVisitedCount++;
-                    // Check energy for best state tracking
-                    if (node.state) {
-                        const energy = calculateEnergy(node.state);
-                        if (energy < dfsBestEnergy) {
-                            dfsBestEnergy = energy;
-                            dfsBestState = JSON.parse(JSON.stringify(node.state));
-                        }
-                    }
-                }
-            }
-
-            // Find unvisited nodes that are adjacent to visited nodes
-            for (const edge of graphEdges) {
-                const fromNode = graphNodes.get(edge.from);
-                const toNode = graphNodes.get(edge.to);
-
-                if (fromNode && toNode) {
-                    if (fromNode.visited && !toNode.visited) {
-                        unvisitedWithVisitedNeighbor.add(edge.to);
-                    }
-                    if (toNode.visited && !fromNode.visited) {
-                        unvisitedWithVisitedNeighbor.add(edge.from);
-                    }
-                }
-            }
-
-            dfsStack = Array.from(unvisitedWithVisitedNeighbor);
-
-            // If no frontier found, start fresh from current state
-            if (dfsStack.length === 0) {
-                dfsStack = [currentStateHash];
-                if (dfsVisitedCount === 0) {
-                    dfsVisitedCount = 1;
-                }
-                dfsBestEnergy = calculateEnergy(blocks);
-                dfsBestState = JSON.parse(JSON.stringify(blocks));
-            }
+            // Reset visited state for DFS-specific tracking
+            // We use a separate visited set so we don't affect the graph visualization
+            dfsVisitedSet = new Set();
 
             document.getElementById('dfsStatus').classList.add('show');
             runDFS();
@@ -2497,10 +2420,12 @@
         }
 
         function exploreDFSNode(nodeHash, node) {
-            // Mark this node as visited
-            if (!node.visited) {
-                node.visited = true;
+            // Mark this node as visited for this DFS run
+            if (!dfsVisitedSet.has(nodeHash)) {
+                dfsVisitedSet.add(nodeHash);
                 dfsVisitedCount++;
+                // Also mark in graph for visualization
+                node.visited = true;
             }
 
             // Get all valid moves from this state
@@ -2510,14 +2435,16 @@
                 const newState = applyMove(node.state, move);
                 const newHash = hashState(newState);
 
-                // Check if this is a new state
+                // Check if this is a new state in the graph
                 if (!graphNodes.has(newHash)) {
                     // Add node (unvisited)
                     addGraphNode(newState, false, nodeHash);
                     addGraphEdge(nodeHash, newHash);
 
-                    // Add to stack for future exploration
-                    dfsStack.push(newHash);
+                    // Add to stack for future exploration (if not visited in this DFS run)
+                    if (!dfsVisitedSet.has(newHash)) {
+                        dfsStack.push(newHash);
+                    }
 
                     // Check if this is a better solution
                     const energy = calculateEnergy(newState);
@@ -2534,9 +2461,8 @@
                     // Just add edge if it doesn't exist
                     addGraphEdge(nodeHash, newHash);
 
-                    // Add to stack if not yet visited
-                    const existingNode = graphNodes.get(newHash);
-                    if (!existingNode.visited && !dfsStack.includes(newHash)) {
+                    // Add to stack if not yet visited in this DFS run
+                    if (!dfsVisitedSet.has(newHash) && !dfsStack.includes(newHash)) {
                         dfsStack.push(newHash);
                     }
                 }
