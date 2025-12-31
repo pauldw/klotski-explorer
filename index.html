@@ -225,6 +225,10 @@
             width: 100%;
         }
 
+        .auto-btn-container.menu-open {
+            margin-bottom: 170px;
+        }
+
         .auto-btn {
             background: linear-gradient(145deg, #f97316, #ea580c);
             color: white;
@@ -261,14 +265,14 @@
             display: none;
             position: absolute;
             top: 100%;
+            left: 0;
             right: 0;
             margin-top: 5px;
             background: #2d2d44;
             border-radius: 8px;
             overflow: hidden;
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-            z-index: 100;
-            min-width: 180px;
+            z-index: 1000;
         }
 
         .auto-btn-menu.show {
@@ -1887,13 +1891,17 @@
         function toggleAutoplayMenu(e) {
             e.stopPropagation();
             const menu = document.getElementById('autoBtnMenu');
+            const container = document.getElementById('autoBtnContainer');
+
             menu.classList.toggle('show');
+            container.classList.toggle('menu-open', menu.classList.contains('show'));
         }
 
         function selectAutoplayType(type) {
             autoplayType = type;
             document.getElementById('autoBtn').textContent = getAutoplayButtonText();
             document.getElementById('autoBtnMenu').classList.remove('show');
+            document.getElementById('autoBtnContainer').classList.remove('menu-open');
 
             // Show/hide SA settings
             const saSettings = document.getElementById('saSettings');
@@ -1905,6 +1913,7 @@
             const container = document.getElementById('autoBtnContainer');
             if (!container.contains(e.target)) {
                 document.getElementById('autoBtnMenu').classList.remove('show');
+                container.classList.remove('menu-open');
             }
         });
 
