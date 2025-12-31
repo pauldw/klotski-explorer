@@ -326,6 +326,29 @@
             color: #f97316;
         }
 
+        .speed-checkbox {
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 15px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .speed-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #10b981;
+        }
+
+        .speed-checkbox label {
+            cursor: pointer;
+        }
+
         .sa-settings {
             margin-top: 15px;
             padding: 15px 20px;
@@ -550,6 +573,11 @@
             </div>
         </div>
 
+        <div class="speed-checkbox">
+            <input type="checkbox" id="humanSpeed">
+            <label for="humanSpeed">Human Speed</label>
+        </div>
+
         <div class="sa-settings" id="saSettings">
             <div class="settings-title">Simulated Annealing Settings</div>
             <div class="settings-grid">
@@ -726,6 +754,12 @@
 
         // Current autoplay type
         let autoplayType = 'sa'; // 'sa', 'bfs', 'dfs', or 'astar'
+
+        // Human speed mode - slows down algorithms for human viewing
+        function isHumanSpeed() {
+            return document.getElementById('humanSpeed').checked;
+        }
+        const HUMAN_SPEED_DELAY = 100; // ms between steps in human speed mode
 
         // Force-directed 3D graph state
         const graphCanvas = document.getElementById('graphCanvas');
@@ -2024,6 +2058,7 @@
             saRunning = false;
             if (saAnimationId) {
                 cancelAnimationFrame(saAnimationId);
+                clearTimeout(saAnimationId);
                 saAnimationId = null;
             }
             document.getElementById('saStatus').classList.remove('show');
@@ -2032,6 +2067,7 @@
             bfsRunning = false;
             if (bfsAnimationId) {
                 cancelAnimationFrame(bfsAnimationId);
+                clearTimeout(bfsAnimationId);
                 bfsAnimationId = null;
             }
             document.getElementById('bfsStatus').classList.remove('show');
@@ -2040,6 +2076,7 @@
             dfsRunning = false;
             if (dfsAnimationId) {
                 cancelAnimationFrame(dfsAnimationId);
+                clearTimeout(dfsAnimationId);
                 dfsAnimationId = null;
             }
             document.getElementById('dfsStatus').classList.remove('show');
@@ -2048,6 +2085,7 @@
             astarRunning = false;
             if (astarAnimationId) {
                 cancelAnimationFrame(astarAnimationId);
+                clearTimeout(astarAnimationId);
                 astarAnimationId = null;
             }
             document.getElementById('astarStatus').classList.remove('show');
@@ -2170,7 +2208,8 @@
             function step() {
                 if (!saRunning) return;
 
-                for (let i = 0; i < iterationsPerFrame; i++) {
+                const effectiveIterations = isHumanSpeed() ? 1 : iterationsPerFrame;
+                for (let i = 0; i < effectiveIterations; i++) {
                     if (temperature < minTemperature) {
                         // SA complete - just stop where we are
                         saRunning = false;
@@ -2234,7 +2273,11 @@
                     checkWin();
                 }
 
-                saAnimationId = requestAnimationFrame(step);
+                if (isHumanSpeed()) {
+                    saAnimationId = setTimeout(step, HUMAN_SPEED_DELAY);
+                } else {
+                    saAnimationId = requestAnimationFrame(step);
+                }
             }
 
             step();
@@ -2248,7 +2291,8 @@
             function step() {
                 if (!bfsRunning) return;
 
-                for (let i = 0; i < nodesPerFrame; i++) {
+                const effectiveNodes = isHumanSpeed() ? 1 : nodesPerFrame;
+                for (let i = 0; i < effectiveNodes; i++) {
                     if (bfsQueue.length === 0) {
                         // BFS complete - no more unvisited nodes to explore
                         stopAutoplay();
@@ -2280,7 +2324,11 @@
                     checkWin();
                 }
 
-                bfsAnimationId = requestAnimationFrame(step);
+                if (isHumanSpeed()) {
+                    bfsAnimationId = setTimeout(step, HUMAN_SPEED_DELAY);
+                } else {
+                    bfsAnimationId = requestAnimationFrame(step);
+                }
             }
 
             step();
@@ -2405,7 +2453,8 @@
             function step() {
                 if (!dfsRunning) return;
 
-                for (let i = 0; i < nodesPerFrame; i++) {
+                const effectiveNodes = isHumanSpeed() ? 1 : nodesPerFrame;
+                for (let i = 0; i < effectiveNodes; i++) {
                     if (dfsStack.length === 0) {
                         // DFS complete - no more unvisited nodes to explore
                         stopAutoplay();
@@ -2437,7 +2486,11 @@
                     checkWin();
                 }
 
-                dfsAnimationId = requestAnimationFrame(step);
+                if (isHumanSpeed()) {
+                    dfsAnimationId = setTimeout(step, HUMAN_SPEED_DELAY);
+                } else {
+                    dfsAnimationId = requestAnimationFrame(step);
+                }
             }
 
             step();
@@ -2530,7 +2583,8 @@
             function step() {
                 if (!astarRunning) return;
 
-                for (let i = 0; i < nodesPerFrame; i++) {
+                const effectiveNodes = isHumanSpeed() ? 1 : nodesPerFrame;
+                for (let i = 0; i < effectiveNodes; i++) {
                     if (astarOpenSet.length === 0) {
                         // A* complete - no more nodes to explore
                         stopAutoplay();
@@ -2590,7 +2644,11 @@
                 render();
                 updateAStarStatus();
 
-                astarAnimationId = requestAnimationFrame(step);
+                if (isHumanSpeed()) {
+                    astarAnimationId = setTimeout(step, HUMAN_SPEED_DELAY);
+                } else {
+                    astarAnimationId = requestAnimationFrame(step);
+                }
             }
 
             step();
